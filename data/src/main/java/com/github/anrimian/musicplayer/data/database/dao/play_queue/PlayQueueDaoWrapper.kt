@@ -8,7 +8,7 @@ import com.github.anrimian.musicplayer.data.repositories.state.UiStateRepository
 import com.github.anrimian.musicplayer.domain.Constants
 import com.github.anrimian.musicplayer.domain.models.composition.Composition
 import com.github.anrimian.musicplayer.domain.models.play_queue.PlayQueueItem
-import com.github.anrimian.musicplayer.domain.utils.functions.Optional
+import com.github.anrimian.musicplayer.domain.utils.functions.Opt
 import io.reactivex.rxjava3.core.Observable
 import java.util.Random
 
@@ -104,12 +104,12 @@ class PlayQueueDaoWrapper(
         }
     }
 
-    fun getItemObservable(id: Long, useFileName: Boolean): Observable<Optional<PlayQueueItem>> {
+    fun getItemObservable(id: Long, useFileName: Boolean): Observable<Opt<PlayQueueItem>> {
         var query = PlayQueueDao.getCompositionQuery(useFileName)
         query += "WHERE itemId = ? LIMIT 1"
         val sqlQuery = SimpleSQLiteQuery(query, arrayOf<Any>(id))
         return playQueueDao.getItemObservable(sqlQuery)
-            .map { itemArray -> Optional(itemArray.firstOrNull()) }
+            .map { itemArray -> Opt(itemArray.firstOrNull()) }
     }
 
     fun deleteItem(itemId: Long) {

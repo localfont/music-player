@@ -1,6 +1,6 @@
 package com.github.anrimian.musicplayer.ui.editor.album
 
-import com.github.anrimian.filesync.models.ProgressInfo
+import com.github.anrimian.fsync.models.ProgressInfo
 import com.github.anrimian.musicplayer.domain.models.albums.Album
 import com.github.anrimian.musicplayer.ui.common.error.ErrorCommand
 import moxy.MvpView

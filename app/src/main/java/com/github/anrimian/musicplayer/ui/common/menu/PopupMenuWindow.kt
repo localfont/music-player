@@ -71,8 +71,7 @@ object PopupMenuWindow {
         listener: Callback<MenuItem>,
         popupWindowRef: AtomicReference<PopupWindow>,
     ): MenuAdapter {
-        val menuAdapter = MenuAdapter(menuItems, R.layout.item_popup_menu)
-        menuAdapter.setOnItemClickListener { item ->
+        val menuAdapter = MenuAdapter(menuItems, R.layout.item_popup_menu) { item ->
             listener.call(item)
             val popup = popupWindowRef.get()
             popup?.dismiss()
@@ -129,7 +128,7 @@ object PopupMenuWindow {
         menuBinding.rvMenuItems.adapter = createMenuAdapter(menuItems, listener, popupWindowRef)
 
         popupWindowRef.set(
-            AppPopupWindow.showPopupWindow(anchorView, menuBinding.root, gravity, screenMargin)
+            AppPopupWindow.showPopupWindow(anchorView, menuBinding.root, screenMargin, gravity)
         )
     }
 

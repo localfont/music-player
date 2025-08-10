@@ -7,7 +7,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.github.anrimian.filesync.models.state.file.FileSyncState
+import com.github.anrimian.fsync.models.state.file.FileSyncState
 import com.github.anrimian.musicplayer.Constants.Tags
 import com.github.anrimian.musicplayer.R
 import com.github.anrimian.musicplayer.databinding.FragmentLibraryCompositionsBinding
@@ -18,11 +18,14 @@ import com.github.anrimian.musicplayer.domain.models.composition.DeletedComposit
 import com.github.anrimian.musicplayer.domain.models.order.Order
 import com.github.anrimian.musicplayer.domain.models.order.OrderType
 import com.github.anrimian.musicplayer.domain.models.utils.ListPosition
+import com.github.anrimian.musicplayer.ui.common.applyFabBottomInsets
+import com.github.anrimian.musicplayer.ui.common.applyLibraryProgressViewOffset
 import com.github.anrimian.musicplayer.ui.common.dialogs.shareCompositions
 import com.github.anrimian.musicplayer.ui.common.dialogs.showConfirmDeleteDialog
 import com.github.anrimian.musicplayer.ui.common.error.ErrorCommand
 import com.github.anrimian.musicplayer.ui.common.format.FormatUtils
 import com.github.anrimian.musicplayer.ui.common.format.MessagesUtils
+import com.github.anrimian.musicplayer.ui.common.format.showSnackbar
 import com.github.anrimian.musicplayer.ui.common.toolbar.AdvancedToolbar
 import com.github.anrimian.musicplayer.ui.common.view.ViewUtils
 import com.github.anrimian.musicplayer.ui.common.view.ViewUtils.onLongVibrationClick
@@ -34,19 +37,18 @@ import com.github.anrimian.musicplayer.ui.library.common.order.SelectOrderDialog
 import com.github.anrimian.musicplayer.ui.library.common.setupLibraryTitle
 import com.github.anrimian.musicplayer.ui.library.compositions.adapter.CompositionsAdapter
 import com.github.anrimian.musicplayer.ui.playlist_screens.choose.ChoosePlayListDialogFragment
-import com.github.anrimian.musicplayer.ui.playlist_screens.choose.newChoosePlayListDialogFragment
 import com.github.anrimian.musicplayer.ui.sleep_timer.SleepTimerDialogFragment
-import com.github.anrimian.musicplayer.ui.utils.fragments.BackButtonListener
+import com.github.anrimian.musicplayer.ui.utils.applyBottomInsets
 import com.github.anrimian.musicplayer.ui.utils.fragments.DialogFragmentRunner
 import com.github.anrimian.musicplayer.ui.utils.fragments.navigation.FragmentNavigationListener
 import com.github.anrimian.musicplayer.ui.utils.fragments.safeShow
+import com.github.anrimian.musicplayer.ui.utils.isTabletLand
 import com.github.anrimian.musicplayer.ui.utils.views.recycler_view.RecyclerViewUtils
 import com.github.anrimian.musicplayer.ui.utils.views.recycler_view.touch_helper.short_swipe.ShortSwipeCallback
 import com.google.android.material.snackbar.Snackbar
 import moxy.ktx.moxyPresenter
 
 class LibraryCompositionsFragment : BaseLibraryCompositionsFragment(), LibraryCompositionsView,
-    BackButtonListener,
     FragmentNavigationListener {
 
     private val presenter by moxyPresenter {
@@ -77,6 +79,12 @@ class LibraryCompositionsFragment : BaseLibraryCompositionsFragment(), LibraryCo
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         toolbar = requireActivity().findViewById(R.id.toolbar)
+
+        binding.fab.applyFabBottomInsets()
+        binding.progressStateView.applyLibraryProgressViewOffset(requireActivity())
+        if (isTabletLand()) {
+            binding.rvCompositions.applyBottomInsets()
+        }
 
         binding.progressStateView.onTryAgainClick { presenter.onTryAgainLoadCompositionsClicked() }
 
@@ -120,12 +128,17 @@ class LibraryCompositionsFragment : BaseLibraryCompositionsFragment(), LibraryCo
     }
 
     override fun onFragmentResumed() {
-        val toolbar: AdvancedToolbar = requireActivity().findViewById(R.id.toolbar)
-        toolbar.setupLibraryTitle(this)
-        toolbar.setSubtitle(R.string.compositions)
-        toolbar.setupSearch(presenter::onSearchTextChanged, presenter.getSearchText())
-        toolbar.setupSelectionModeMenu(R.menu.library_compositions_selection_menu, this::onActionModeItemClicked)
-        toolbar.setupOptionsMenu(R.menu.library_compositions_menu, this::onOptionsItemClicked)
+        requireActivity().findViewById<AdvancedToolbar>(R.id.toolbar).setup {
+            setupLibraryTitle(this@LibraryCompositionsFragment)
+            setSubtitle(R.string.compositions)
+            setupSearch(presenter::onSearchTextChanged, text = presenter.getSearchText())
+            setupSelectionModeMenu(
+                R.menu.library_compositions_selection_menu,
+                ::onActionModeItemClicked,
+                presenter::onExitSelectionModeClicked
+            )
+            setupOptionsMenu(R.menu.library_compositions_menu, ::onOptionsItemClicked)
+        }
     }
 
     override fun onStop() {
@@ -133,19 +146,9 @@ class LibraryCompositionsFragment : BaseLibraryCompositionsFragment(), LibraryCo
         presenter.onStop(ViewUtils.getListPosition(layoutManager))
     }
 
-    override fun onBackPressed(): Boolean {
-        if (toolbar.isInActionMode()) {
-            presenter.onSelectionModeBackPressed()
-            return true
-        }
-        if (toolbar.isInSearchMode()) {
-            toolbar.setSearchModeEnabled(false)
-            return true
-        }
-        return false
-    }
-
     override fun getCoordinatorLayout() = binding.root
+
+    override fun getFloatingActionButton() = binding.fab
 
     override fun showEmptyList() {
         binding.fab.visibility = View.GONE
@@ -195,12 +198,7 @@ class LibraryCompositionsFragment : BaseLibraryCompositionsFragment(), LibraryCo
     }
 
     override fun showSelectPlayListDialog() {
-        val dialog = if (toolbar.isInActionMode()) {
-            newChoosePlayListDialogFragment(R.attr.actionModeStatusBarColor)
-        } else {
-            ChoosePlayListDialogFragment()
-        }
-        choosePlayListDialogRunner.show(dialog)
+        choosePlayListDialogRunner.show(ChoosePlayListDialogFragment())
     }
 
     override fun showSelectOrderScreen(order: Order) {
@@ -224,17 +222,16 @@ class LibraryCompositionsFragment : BaseLibraryCompositionsFragment(), LibraryCo
 
     override fun showDeleteCompositionError(errorCommand: ErrorCommand) {
         deletingErrorHandler.handleError(errorCommand) {
-            MessagesUtils.makeSnackbar(
-                binding.listContainer,
+            binding.listContainer.showSnackbar(
                 getString(R.string.delete_composition_error_template, errorCommand.message),
-                Snackbar.LENGTH_SHORT
-            ).show()
+                anchorView = binding.fab
+            )
         }
     }
 
     override fun showDeleteCompositionMessage(compositionsToDelete: List<DeletedComposition>) {
         val text = MessagesUtils.getDeleteCompleteMessage(requireActivity(), compositionsToDelete)
-        MessagesUtils.makeSnackbar(binding.listContainer, text, Snackbar.LENGTH_SHORT).show()
+        binding.listContainer.showSnackbar(text, anchorView = binding.fab)
     }
 
     override fun shareCompositions(selectedCompositions: Collection<Composition>) {
@@ -267,10 +264,10 @@ class LibraryCompositionsFragment : BaseLibraryCompositionsFragment(), LibraryCo
     }
 
     private fun showEditorRequestDeniedMessage() {
-        MessagesUtils.makeSnackbar(
-            binding.listContainer,
+        binding.listContainer.showSnackbar(
             R.string.android_r_edit_file_permission_denied,
-            Snackbar.LENGTH_LONG
-        ).show()
+            Snackbar.LENGTH_LONG,
+            binding.fab
+        )
     }
 }

@@ -14,6 +14,7 @@ public interface Constants {
         int CHANGE_REPEAT_MODE = 6;
         int REWIND = 7;
         int FAST_FORWARD = 8;
+        int CLOSE = 9;
     }
 
     interface Arguments {
@@ -21,7 +22,6 @@ public interface Constants {
         String ORDERS_ARG = "orders_arg";
         String PLAY_LIST_ID_ARG = "play_list_id_arg";
         String ID_ARG = "id_arg";//we can replace other `id_arg`
-        String STATUS_BAR_COLOR_ATTR_ARG = "status_bar_color_attr";
         String OPEN_PLAYER_PANEL_ARG = "open_player_panel_arg";
         String COMPOSITION_ID_ARG = "composition_id_arg";
         String ALBUM_ID_ARG = "album_id_arg";
@@ -81,4 +81,10 @@ public interface Constants {
         int PLAY_LOADING = 2;
         int PAUSE = 3;
     }
+
+    interface Links {
+        String IN_APP_LINK_PREFIX = "in-app:";
+        String PLAYER_SETTINGS = "player-settings:";
+    }
+
 }

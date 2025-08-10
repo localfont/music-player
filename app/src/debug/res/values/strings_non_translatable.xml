@@ -2,6 +2,7 @@
 <resources>
 
     <string name="app_name" translatable="false">(D)Music Player</string>
+    <string name="title_external_player" translatable="false">(D)Music Player - Play File</string>
     <string name="file_provider_authorities" translatable="false">
                 com.github.anrimian.simplemusicplayer.share_file_provider(debug)
     </string>

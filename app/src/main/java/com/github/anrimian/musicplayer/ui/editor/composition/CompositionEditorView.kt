@@ -1,6 +1,6 @@
 package com.github.anrimian.musicplayer.ui.editor.composition
 
-import com.github.anrimian.filesync.models.state.file.FileSyncState
+import com.github.anrimian.fsync.models.state.file.FileSyncState
 import com.github.anrimian.musicplayer.domain.models.composition.FullComposition
 import com.github.anrimian.musicplayer.ui.common.error.ErrorCommand
 import moxy.MvpView
@@ -31,7 +31,7 @@ interface CompositionEditorView : MvpView {
     fun hideChangeFileProgress()
 
     @AddToEndSingle
-    fun showSyncState(fileSyncState: FileSyncState, composition: FullComposition)
+    fun showSyncState(fileSyncState: FileSyncState?, composition: FullComposition)
 
     @AddToEndSingle
     fun showCompositionCover(composition: FullComposition)

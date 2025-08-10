@@ -5,6 +5,9 @@
     <!--remove permission from glide because we don't use internet for covers-->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove"/>
 
+    <!--for unknown reason was added by debug manifest-->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" tools:node="remove"/>
+
     <application
         android:label="@string/app_name"
         android:icon="@mipmap/ic_launcher"

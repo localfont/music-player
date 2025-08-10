@@ -12,7 +12,9 @@
     <LinearLayout
         android:id="@+id/toolbarInternal"
         android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize">
+        android:layout_height="?attr/actionBarSize"
+        android:background="@android:color/transparent">
+        <!--transparent background is required for flTitleArea click effect border-->
 
         <FrameLayout
             android:layout_width="wrap_content"
@@ -50,7 +52,7 @@
             android:layout_height="?attr/actionBarSize">
 
             <TextView
-                android:id="@+id/tvTitle"
+                android:id="@+id/tvToolbarTitle"
                 style="@style/ToolbarTitleStyle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -69,8 +71,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:importantForAccessibility="no"
-                app:layout_constraintTop_toBottomOf="@id/tvTitle"
-                app:layout_constraintStart_toStartOf="@id/tvTitle"
+                app:layout_constraintTop_toBottomOf="@id/tvToolbarTitle"
+                app:layout_constraintStart_toStartOf="@id/tvToolbarTitle"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toStartOf="@id/acvMain"
                 app:layout_constrainedWidth="true"
@@ -82,7 +84,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 app:barrierDirection="end"
-                app:constraint_referenced_ids="tvTitle, tvSubtitle"/>
+                app:constraint_referenced_ids="tvToolbarTitle, tvSubtitle"/>
 
             <ImageView
                 android:id="@+id/ivActionIcon"

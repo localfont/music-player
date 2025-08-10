@@ -78,6 +78,8 @@ public class CompositionEntity {
     private final Date dateAdded;
     @Nonnull
     private final Date dateModified;
+    @Nullable
+    private final Long pathModifyTime;
     @androidx.annotation.NonNull
     private final Date lastScanDate;
     @androidx.annotation.NonNull
@@ -103,6 +105,7 @@ public class CompositionEntity {
                              @Nullable Long storageId,
                              @Nonnull Date dateAdded,
                              @Nonnull Date dateModified,
+                             @Nullable Long pathModifyTime,
                              @NonNull Date lastScanDate,
                              @NonNull Date coverModifyTime,
                              @Nullable CorruptionType corruptionType,
@@ -121,6 +124,7 @@ public class CompositionEntity {
         this.size = size;
         this.dateAdded = dateAdded;
         this.dateModified = dateModified;
+        this.pathModifyTime = pathModifyTime;
         this.lastScanDate = lastScanDate;
         this.coverModifyTime = coverModifyTime;
         this.corruptionType = corruptionType;
@@ -193,6 +197,11 @@ public class CompositionEntity {
     @Nonnull
     public Date getDateAdded() {
         return dateAdded;
+    }
+
+    @Nullable
+    public Long getPathModifyTime() {
+        return pathModifyTime;
     }
 
     @Nonnull

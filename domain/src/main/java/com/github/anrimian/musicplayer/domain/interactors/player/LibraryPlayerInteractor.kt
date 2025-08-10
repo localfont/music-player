@@ -1,8 +1,7 @@
 package com.github.anrimian.musicplayer.domain.interactors.player
 
-import com.github.anrimian.filesync.SyncInteractor
+import com.github.anrimian.fsync.SyncInteractor
 import com.github.anrimian.musicplayer.domain.Constants
-import com.github.anrimian.musicplayer.domain.controllers.SystemServiceController
 import com.github.anrimian.musicplayer.domain.interactors.analytics.Analytics
 import com.github.anrimian.musicplayer.domain.models.composition.Composition
 import com.github.anrimian.musicplayer.domain.models.composition.CorruptionType
@@ -29,15 +28,20 @@ import com.github.anrimian.musicplayer.domain.repositories.LibraryRepository
 import com.github.anrimian.musicplayer.domain.repositories.PlayQueueRepository
 import com.github.anrimian.musicplayer.domain.repositories.SettingsRepository
 import com.github.anrimian.musicplayer.domain.repositories.UiStateRepository
-import com.github.anrimian.musicplayer.domain.utils.functions.Optional
+import com.github.anrimian.musicplayer.domain.utils.functions.Opt
 import com.github.anrimian.musicplayer.domain.utils.rx.LazyBehaviorSubject
+import com.github.anrimian.musicplayer.domain.utils.rx.attachGateObservable
 import com.github.anrimian.musicplayer.domain.utils.rx.doOnEvent
 import io.reactivex.rxjava3.core.Completable
 import io.reactivex.rxjava3.core.Flowable
+import io.reactivex.rxjava3.core.Maybe
+import io.reactivex.rxjava3.core.Notification
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.disposables.CompositeDisposable
+import io.reactivex.rxjava3.subjects.BehaviorSubject
 import io.reactivex.rxjava3.subjects.PublishSubject
+import java.util.concurrent.atomic.AtomicBoolean
 
 class LibraryPlayerInteractor(
     private val playerCoordinatorInteractor: PlayerCoordinatorInteractor,
@@ -46,14 +50,14 @@ class LibraryPlayerInteractor(
     private val playQueueRepository: PlayQueueRepository,
     private val libraryRepository: LibraryRepository,
     private val uiStateRepository: UiStateRepository,
-    private val systemServiceController: SystemServiceController,
     private val analytics: Analytics,
 ) {
 
     private val playerSourceDisposable = CompositeDisposable()
     private val playerEventsDisposable = CompositeDisposable()
 
-    private val preparationEventSubject = PublishSubject.create<Any>()
+    private val isAnySourcePrepared = AtomicBoolean(false)
+    private val preparationOutcomeSubject = PublishSubject.create<Notification<Any>>()
 
     private val trackPositionSubject = LazyBehaviorSubject(
         playQueueRepository.getCurrentQueueItemObservable()
@@ -64,18 +68,19 @@ class LibraryPlayerInteractor(
                 } else {
                     playQueueRepository.getItemTrackPosition(item.itemId)
                 }
-            }.takeUntil(preparationEventSubject)
+            }.takeUntil(preparationOutcomeSubject)
     )
+
+    private val currentCompositionGateSubject = BehaviorSubject.createDefault(false)
 
     private val currentCompositionObservable = createCurrentCompositionObservable()
         .replay(1)
         .refCount()
 
     private var currentItem: PlayQueueItem? = null
-    private var ignoredPreviousCurrentItem: PlayQueueItem? = null
 
     fun prepare() {
-        checkSourcePrepare().onErrorComplete().subscribe()
+        ensureSourceReady().onErrorComplete().subscribe()
     }
 
     @JvmOverloads
@@ -93,15 +98,24 @@ class LibraryPlayerInteractor(
         if (compositionIds.isEmpty()) {
             return Completable.complete()
         }
-        ignoredPreviousCurrentItem = currentItem
+        val ignoredPreviousCurrentItem = currentItem
         return playQueueRepository.setPlayQueue(compositionIds, firstPosition)
-            .andThen(checkSourcePrepare())
-            .doOnComplete { playerCoordinatorInteractor.playAfterPrepare(PlayerType.LIBRARY) }
+            .andThen(
+                playQueueRepository.getCurrentQueueItemObservable()
+                    .filter { event -> event.playQueueItem != ignoredPreviousCurrentItem }
+                    .take(1)
+                    .ignoreElements()
+            )
+            .andThen(ensureSourceReady())
+            .doOnSuccess { playerCoordinatorInteractor.playAfterPrepare(PlayerType.LIBRARY) }
+            .ignoreElement()
+            .doOnSubscribe { currentCompositionGateSubject.onNext(true) }
+            .doFinally { currentCompositionGateSubject.onNext(false) }
     }
 
     @Suppress("CheckResult")
     fun play(delay: Long = 0) {
-        checkSourcePrepare().subscribe(
+        ensureSourceReady().subscribe(
             { playerCoordinatorInteractor.play(PlayerType.LIBRARY, delay) },
             {}
         )
@@ -109,7 +123,7 @@ class LibraryPlayerInteractor(
 
     @Suppress("CheckResult")
     fun playOrPause() {
-        checkSourcePrepare().subscribe(
+        ensureSourceReady().subscribe(
             { playerCoordinatorInteractor.playOrPause(PlayerType.LIBRARY) },
             {}
         )
@@ -238,15 +252,15 @@ class LibraryPlayerInteractor(
         return currentCompositionObservable
     }
 
-    fun getCurrentCompositionLyrics(): Observable<Optional<String>> {
+    fun getCurrentCompositionLyrics(): Observable<Opt<String>> {
         return playQueueRepository.getCurrentQueueItemObservable()
             .switchMap { item ->
                 val queueItem = item.playQueueItem
                 return@switchMap if (queueItem == null) {
-                    Observable.fromCallable { Optional(null) }
+                    Observable.fromCallable { Opt(null) }
                 } else {
                     libraryRepository.getLyricsObservable(queueItem.id)
-                        .map(::Optional)
+                        .map(::Opt)
                 }
             }
     }
@@ -312,29 +326,64 @@ class LibraryPlayerInteractor(
         return playerCoordinatorInteractor.getSpeedChangeAvailableObservable()
     }
 
-    private fun checkSourcePrepare(): Completable {
-        return Completable.create { emitter ->
-            if (playerSourceDisposable.size() != 0) {
-                emitter.onComplete()
-                return@create
+    private fun ensureSourceReady(): Maybe<Any> {
+        return Maybe.defer {
+            if (isAnySourcePrepared.get()) {
+                Maybe.just(Constants.TRIGGER)
+            } else {
+                Maybe.create { emitter ->
+                    // use this approach to subscribe on result before any source will be prepared
+                    val disposable = preparationOutcomeSubject
+                        .take(1)
+                        .subscribe(
+                            { notification ->
+                                if (notification.isOnNext) {
+                                    emitter.onSuccess(Constants.TRIGGER)
+                                } else if (notification.isOnError) {
+                                    emitter.onError(notification.error!!)
+                                } else {
+                                    emitter.onComplete()
+                                }
+                            },
+                            emitter::onError
+                        )
+                    emitter.setCancellable { disposable.dispose() }
+                    subscribeOnCurrentSource()
+                }
             }
-            playQueueRepository.getCurrentQueueItemObservable()
-                .flatMapSingle(this::onQueueItemChanged)
-                .subscribe(
-                    {
-                        preparationEventSubject.onNext(Constants.TRIGGER)
-                        subscribeOnPlayerEvents()
-                        emitter.onComplete()
-                    },
-                    { t ->
-                        playerEventsDisposable.clear()
-                        systemServiceController.stopMusicService(true, true)
-                        emitter.onError(t)
-                    },
-                    {},
-                    playerSourceDisposable
-                )
         }
+    }
+
+    private fun subscribeOnCurrentSource() {
+        if (playerSourceDisposable.size() != 0) {
+            return
+        }
+        playQueueRepository.getCurrentQueueItemObservable()
+            .flatMapSingle(this::onQueueItemChanged)
+            .subscribe(
+                { isSourcePrepared ->
+                    if (isSourcePrepared) {
+                        subscribeOnPlayerEvents()
+                        isAnySourcePrepared.set(true)
+                        preparationOutcomeSubject.onNext(Notification.createOnNext(Constants.TRIGGER))
+                    } else {
+                        playerEventsDisposable.clear()
+                        playerCoordinatorInteractor.reset(PlayerType.LIBRARY)
+                        isAnySourcePrepared.set(false)
+                        playerSourceDisposable.clear()
+                        preparationOutcomeSubject.onNext(Notification.createOnComplete())
+                    }
+                },
+                { t ->
+                    playerEventsDisposable.clear()
+                    playerCoordinatorInteractor.reset(PlayerType.LIBRARY)
+                    isAnySourcePrepared.set(false)
+                    playerSourceDisposable.clear()
+                    preparationOutcomeSubject.onNext(Notification.createOnError(t))
+                },
+                {},
+                playerSourceDisposable
+            )
     }
 
     private fun subscribeOnPlayerEvents() {
@@ -356,15 +405,12 @@ class LibraryPlayerInteractor(
         )
     }
 
-    private fun onQueueItemChanged(event: PlayQueueEvent): Single<PlayQueueEvent> {
+    private fun onQueueItemChanged(event: PlayQueueEvent): Single<Boolean> {
         val previousItem = currentItem
         val currentItem = event.playQueueItem
         this.currentItem = currentItem
         if (currentItem == null) {
-            if (previousItem != null) {
-                reset()
-            }
-            return Single.just(event)
+            return Single.just(false)
         }
         if (previousItem != null && previousItem == currentItem) {
             //if file changed - re prepare with actual position
@@ -377,11 +423,11 @@ class LibraryPlayerInteractor(
                     return getTrackPosition().doOnSuccess { trackPosition ->
                         //and cover will be not updated, f.e.?
                         playerCoordinatorInteractor.prepareToPlay(source, PlayerType.LIBRARY, trackPosition)
-                    }.map { event }
+                    }.map { true }
                 }
                 playerCoordinatorInteractor.updateSource(source, PlayerType.LIBRARY)
             }
-            return Single.just(event)
+            return Single.just(true)
         }
         return playQueueRepository.getItemTrackPosition(currentItem.itemId)
             .doOnSuccess { trackPosition ->
@@ -391,7 +437,7 @@ class LibraryPlayerInteractor(
                     PlayerType.LIBRARY,
                     trackPosition
                 )
-            }.map { event }
+            }.map { true }
     }
 
     private fun seekBy(rewindValueMillis: Long) {
@@ -412,25 +458,20 @@ class LibraryPlayerInteractor(
             .subscribe()
     }
 
-    private fun getCurrentComposition(): Single<Optional<PlayQueueItem>> {
+    private fun getCurrentComposition(): Single<Opt<PlayQueueItem>> {
         return playQueueRepository.getCurrentQueueItemObservable()
             .onErrorComplete()
-            .map { event -> Optional(event.playQueueItem) }
-            .first(Optional())
+            .map { event -> Opt(event.playQueueItem) }
+            .first(Opt())
     }
 
     private fun createCurrentCompositionObservable(): Observable<CurrentComposition> {
-        return playQueueRepository.getCurrentQueueItemObservable()
-            .distinctUntilChanged()
-            .switchMap { event ->
-                getIsPlayingStateObservable()
-                    .distinctUntilChanged()
-                    .filter {
-                        event.playQueueItem == null || event.playQueueItem != ignoredPreviousCurrentItem
-                    }
-                    .map { state -> CurrentComposition(event, state) }
-            }
-            .distinctUntilChanged()
+        return Observable.combineLatest(
+            playQueueRepository.getCurrentQueueItemObservable(),
+            getIsPlayingStateObservable(),
+            ::CurrentComposition
+        ).distinctUntilChanged()
+            .attachGateObservable(currentCompositionGateSubject)
     }
 
     private fun getTrackPosition(): Single<Long> {
@@ -578,6 +619,9 @@ class LibraryPlayerInteractor(
         if (queuePosition == 0) {
             if (settingsRepository.repeatMode == RepeatMode.NONE) {
                 pause()
+                onSeekFinished(0)
+            } else if (settingsRepository.repeatMode == RepeatMode.REPEAT_PLAY_QUEUE) {
+                onSeekFinished(0)
             }
         }
     }

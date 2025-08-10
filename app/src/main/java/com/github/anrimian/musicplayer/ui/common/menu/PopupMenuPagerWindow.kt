@@ -99,7 +99,7 @@ object PopupMenuPagerWindow {
         }
 
         popupWindowRef.set(
-            AppPopupWindow.showPopupWindow(anchorView, menuBinding.root, gravity, screenMargin)
+            AppPopupWindow.showPopupWindow(anchorView, menuBinding.root, screenMargin, gravity)
         )
     }
 

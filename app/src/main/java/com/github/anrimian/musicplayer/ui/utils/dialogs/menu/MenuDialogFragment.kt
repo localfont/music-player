@@ -1,95 +1,76 @@
-package com.github.anrimian.musicplayer.ui.utils.dialogs.menu;
+package com.github.anrimian.musicplayer.ui.utils.dialogs.menu
 
-import static com.github.anrimian.musicplayer.Constants.Arguments.EXTRA_DATA_ARG;
-import static com.github.anrimian.musicplayer.ui.utils.AndroidUtils.createMenu;
+import android.app.AlertDialog
+import android.app.Dialog
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.MenuItem
+import android.view.View
+import androidx.annotation.MenuRes
+import androidx.fragment.app.DialogFragment
+import androidx.recyclerview.widget.LinearLayoutManager
+import com.github.anrimian.musicplayer.Constants
+import com.github.anrimian.musicplayer.R
+import com.github.anrimian.musicplayer.databinding.DialogMenuBinding
+import com.github.anrimian.musicplayer.ui.utils.AndroidUtils
+import com.github.anrimian.musicplayer.ui.utils.args
 
-import android.app.AlertDialog;
-import android.app.Dialog;
-import android.os.Bundle;
-import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.MenuItem;
-import android.view.View;
+class MenuDialogFragment : DialogFragment() {
 
-import androidx.annotation.MenuRes;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.fragment.app.DialogFragment;
-import androidx.recyclerview.widget.LinearLayoutManager;
+    private var onCompleteListener: ((MenuItem) -> Unit)? = null
 
-import com.github.anrimian.musicplayer.R;
-import com.github.anrimian.musicplayer.databinding.DialogMenuBinding;
-import com.github.anrimian.musicplayer.domain.utils.functions.BiCallback;
-import com.github.anrimian.musicplayer.ui.utils.OnCompleteListener;
+    private var complexCompleteListener: ((MenuItem, Bundle) -> Unit)? = null
 
-public class MenuDialogFragment extends DialogFragment {
+    override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
+        val binding = DialogMenuBinding.inflate(LayoutInflater.from(requireContext()))
+        val view: View = binding.root
 
-    private static final String MENU_ARG = "menu_arg";
-    private static final String TITLE_ARG = "title_arg";
+        binding.rvMenuItems.layoutManager = LinearLayoutManager(requireContext())
 
-    @Nullable
-    private OnCompleteListener<MenuItem> onCompleteListener;
+        val menu = AndroidUtils.createMenu(requireContext(), args.getInt(MENU_ARG))
+        val menuAdapter = MenuAdapter(menu, R.layout.item_dialog_menu, this::onMenuItemClicked)
+        binding.rvMenuItems.adapter = menuAdapter
 
-    @Nullable
-    private BiCallback<MenuItem, Bundle> complexCompleteListener;
-
-    public static MenuDialogFragment newInstance(@MenuRes int menuRes, String title) {
-        return newInstance(menuRes, title, null);
+        return AlertDialog.Builder(activity)
+            .setTitle(args.getString(TITLE_ARG))
+            .setView(view)
+            .create()
     }
 
-    public static MenuDialogFragment newInstance(@MenuRes int menuRes,
-                                                 String title,
-                                                 Bundle extra) {
-        Bundle args = new Bundle();
-        args.putInt(MENU_ARG, menuRes);
-        args.putString(TITLE_ARG, title);
-        args.putBundle(EXTRA_DATA_ARG, extra);
-        MenuDialogFragment fragment = new MenuDialogFragment();
-        fragment.setArguments(args);
-        return fragment;
+    fun setOnCompleteListener(onCompleteListener: (MenuItem) -> Unit) {
+        this.onCompleteListener = onCompleteListener
     }
 
-    @NonNull
-    @Override
-    public Dialog onCreateDialog(Bundle savedInstanceState) {
-        DialogMenuBinding binding = DialogMenuBinding.inflate(LayoutInflater.from(requireContext()));
-        View view = binding.getRoot();
-
-        binding.rvMenuItems.setLayoutManager(new LinearLayoutManager(requireContext()));
-
-        MenuAdapter menuAdapter = new MenuAdapter(getMenu(), R.layout.item_dialog_menu);
-        menuAdapter.setOnItemClickListener(this::onMenuItemClicked);
-        binding.rvMenuItems.setAdapter(menuAdapter);
-
-        return new AlertDialog.Builder(getActivity())
-                .setTitle(getTitle())
-                .setView(view)
-                .create();
+    fun setComplexCompleteListener(complexCompleteListener: (MenuItem, Bundle) -> Unit) {
+        this.complexCompleteListener = complexCompleteListener
     }
 
-    public void setOnCompleteListener(@Nullable OnCompleteListener<MenuItem> onCompleteListener) {
-        this.onCompleteListener = onCompleteListener;
+    private fun onMenuItemClicked(menuItem: MenuItem) {
+        onCompleteListener?.invoke(menuItem)
+        complexCompleteListener?.invoke(
+            menuItem,
+            args.getBundle(Constants.Arguments.EXTRA_DATA_ARG)!!
+        )
+        dismissAllowingStateLoss()
     }
 
-    public void setComplexCompleteListener(@Nullable BiCallback<MenuItem, Bundle> complexCompleteListener) {
-        this.complexCompleteListener = complexCompleteListener;
-    }
+    companion object {
 
-    private void onMenuItemClicked(MenuItem menuItem) {
-        if (onCompleteListener != null) {
-            onCompleteListener.onComplete(menuItem);
+        private const val MENU_ARG = "menu_arg"
+        private const val TITLE_ARG = "title_arg"
+
+        fun newInstance(
+            @MenuRes menuRes: Int,
+            title: String?,
+            extra: Bundle? = null
+        ) = MenuDialogFragment().apply {
+            arguments = Bundle().apply {
+                putInt(MENU_ARG, menuRes)
+                putString(TITLE_ARG, title)
+                putBundle(Constants.Arguments.EXTRA_DATA_ARG, extra)
+            }
         }
-        if (complexCompleteListener != null) {
-            complexCompleteListener.call(menuItem, requireArguments().getBundle(EXTRA_DATA_ARG));
-        }
-        dismissAllowingStateLoss();
+
     }
 
-    private Menu getMenu() {
-        return createMenu(requireContext(), requireArguments().getInt(MENU_ARG));
-    }
-
-    private String getTitle() {
-        return requireArguments().getString(TITLE_ARG);
-    }
 }

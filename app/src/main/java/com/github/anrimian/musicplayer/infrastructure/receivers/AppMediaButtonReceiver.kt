@@ -10,17 +10,16 @@ import com.github.anrimian.musicplayer.di.Components
 import com.github.anrimian.musicplayer.ui.common.AppAndroidUtils
 import com.github.anrimian.musicplayer.ui.utils.getParcelable
 
-private const val UNSUPPORTED_EVENT_PROCESS_WINDOW_MILLIS = 1000L
-
-private var lastUnsupportedEventTime = 0L
-
 class AppMediaButtonReceiver: MediaButtonReceiver() {
 
     override fun onReceive(context: Context, intent: Intent?) {
         if (intent == null
             || intent.action != Intent.ACTION_MEDIA_BUTTON
             || !intent.hasExtra(Intent.EXTRA_KEY_EVENT)) {
-            handleUnsupportedAction(context)
+//            handleUnsupportedAction(context) //tmp disabled, observe android auto false-positive play
+            //observation: resume button when process is stopped can be broken. Add setting(enable by default)
+            // "Consider unsupported actions as play-pause command"
+            // "Can cause misbehavior on some devices, disable if playback is started randomly"
             return
         }
         val keyEvent = intent.getParcelable<KeyEvent>(Intent.EXTRA_KEY_EVENT)
@@ -43,6 +42,7 @@ class AppMediaButtonReceiver: MediaButtonReceiver() {
         }
         lastUnsupportedEventTime = currentTime
 
+        Components.checkInitialization(context)
         val appComponent = Components.getAppComponent()
         if (!Permissions.hasFilePermission(context)) {
             appComponent.notificationsDisplayer().showErrorNotification(R.string.no_file_permission)
@@ -87,6 +87,12 @@ class AppMediaButtonReceiver: MediaButtonReceiver() {
                 handleIntent(mediaSession, intent)
             }
         }
+    }
+
+    private companion object {
+        const val UNSUPPORTED_EVENT_PROCESS_WINDOW_MILLIS = 1000L
+
+        var lastUnsupportedEventTime = 0L
     }
 
 }

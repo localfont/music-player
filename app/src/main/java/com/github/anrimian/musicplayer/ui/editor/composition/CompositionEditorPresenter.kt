@@ -1,7 +1,8 @@
 package com.github.anrimian.musicplayer.ui.editor.composition
 
-import com.github.anrimian.filesync.SyncInteractor
-import com.github.anrimian.filesync.models.state.file.FileSyncState
+import com.github.anrimian.fsync.SyncInteractor
+import com.github.anrimian.fsync.models.Optional
+import com.github.anrimian.fsync.models.state.file.FileSyncState
 import com.github.anrimian.musicplayer.domain.interactors.editor.EditorInteractor
 import com.github.anrimian.musicplayer.domain.models.composition.FullComposition
 import com.github.anrimian.musicplayer.domain.models.image.ImageSource
@@ -29,7 +30,7 @@ class CompositionEditorPresenter(
 
     private lateinit var composition: FullComposition
     private lateinit var genres: MutableList<String>
-    private lateinit var fileSyncState: FileSyncState
+    private lateinit var fileSyncStateOpt: Optional<FileSyncState>
 
     private var lastEditAction: Completable? = null
 
@@ -314,8 +315,8 @@ class CompositionEditorPresenter(
             )
     }
 
-    private fun onSyncStateReceived(syncState: FileSyncState) {
-        this.fileSyncState = syncState
+    private fun onSyncStateReceived(stateOpt: Optional<FileSyncState>) {
+        this.fileSyncStateOpt = stateOpt
         showSyncState()
     }
 
@@ -340,8 +341,8 @@ class CompositionEditorPresenter(
     }
 
     private fun showSyncState() {
-        if (::composition.isInitialized && ::fileSyncState.isInitialized) {
-            viewState.showSyncState(fileSyncState, composition)
+        if (::composition.isInitialized && ::fileSyncStateOpt.isInitialized) {
+            viewState.showSyncState(fileSyncStateOpt.value, composition)
         }
     }
 

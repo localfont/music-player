@@ -1,7 +1,6 @@
 package com.github.anrimian.musicplayer.domain.interactors.player
 
-import com.github.anrimian.filesync.SyncInteractor
-import com.github.anrimian.musicplayer.domain.controllers.SystemServiceController
+import com.github.anrimian.fsync.SyncInteractor
 import com.github.anrimian.musicplayer.domain.interactors.analytics.Analytics
 import com.github.anrimian.musicplayer.domain.models.composition.CorruptionType
 import com.github.anrimian.musicplayer.domain.models.composition.content.AcceptablePlayerException
@@ -43,7 +42,6 @@ class LibraryPlayerInteractorTest {
     private val playQueueRepository: PlayQueueRepository = mock()
     private val musicProviderRepository: LibraryRepository = mock()
     private val uiStateRepository: UiStateRepository = mock()
-    private val systemServiceController: SystemServiceController = mock()
     private val analytics: Analytics = mock()
     
     private lateinit var libraryPlayerInteractor: LibraryPlayerInteractor
@@ -111,7 +109,6 @@ class LibraryPlayerInteractorTest {
             playQueueRepository,
             musicProviderRepository,
             uiStateRepository,
-            systemServiceController,
             analytics
         )
     }
@@ -144,7 +141,7 @@ class LibraryPlayerInteractorTest {
 
         libraryPlayerInteractor.play()
         verify(playerCoordinatorInteractor, never()).play(eq(PlayerType.LIBRARY), any())
-        verify(systemServiceController).stopMusicService(eq(true), eq(true))
+        verify(playerCoordinatorInteractor).reset(eq(PlayerType.LIBRARY), eq(false))
 
         isCurrentCompositionErrorEnabled = false
         currentCompositionSubject.onNext(testPlayQueueEvent)
@@ -219,6 +216,7 @@ class LibraryPlayerInteractorTest {
             playerEventSubject.onNext(PlayerEvent.FinishedEvent(testLibrarySource))
 
             verify(playQueueRepository).skipToNext()
+            verify(playerCoordinatorInteractor).onSeekFinished(eq(0L), eq(PlayerType.LIBRARY))
             verify(playerCoordinatorInteractor, never()).stop(eq(PlayerType.LIBRARY))
         }
 
@@ -267,7 +265,7 @@ class LibraryPlayerInteractorTest {
         fun `on empty queue event test`() {
             currentCompositionSubject.onNext(PlayQueueEvent(null))
 
-            verify(playerCoordinatorInteractor).reset(eq(PlayerType.LIBRARY))
+            verify(playerCoordinatorInteractor).reset(eq(PlayerType.LIBRARY), eq(false))
         }
 
     }

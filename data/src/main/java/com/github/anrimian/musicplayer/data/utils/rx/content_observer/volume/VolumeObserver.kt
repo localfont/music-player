@@ -1,65 +1,72 @@
-package com.github.anrimian.musicplayer.data.utils.rx.content_observer.volume;
+package com.github.anrimian.musicplayer.data.utils.rx.content_observer.volume
 
-import static com.github.anrimian.musicplayer.domain.Constants.TRIGGER;
+import android.content.Context
+import android.media.AudioDeviceCallback
+import android.media.AudioDeviceInfo
+import android.media.AudioManager
+import android.os.Build
+import com.github.anrimian.musicplayer.data.utils.rx.receivers.RxReceivers
+import com.github.anrimian.musicplayer.domain.Constants
+import com.github.anrimian.musicplayer.domain.models.volume.VolumeState
+import io.reactivex.rxjava3.core.Observable
+import io.reactivex.rxjava3.core.Single
+import io.reactivex.rxjava3.subjects.PublishSubject
 
-import android.content.Context;
-import android.media.AudioDeviceCallback;
-import android.media.AudioDeviceInfo;
-import android.media.AudioManager;
-import android.os.Build;
-
-import com.github.anrimian.musicplayer.data.utils.rx.receivers.RxReceivers;
-import com.github.anrimian.musicplayer.domain.models.volume.VolumeState;
-
-import io.reactivex.rxjava3.core.Observable;
-import io.reactivex.rxjava3.core.Single;
-import io.reactivex.rxjava3.subjects.PublishSubject;
-
-public class VolumeObserver {
-
+object VolumeObserver {
     /**
      * Emits volume in absolute values. Has no start event
      */
-    public static Observable<Integer> getVolumeObservable(Context context, AudioManager audioManager) {
+    fun getVolumeObservable(context: Context, audioManager: AudioManager): Observable<Int> {
         return RxReceivers.from("android.media.VOLUME_CHANGED_ACTION", context)
-                .flatMapSingle(o -> safeGetStreamVolume(audioManager))
-                .distinctUntilChanged();
+            .flatMapSingle { safeGetStreamVolumeSingle(audioManager) }
+            .distinctUntilChanged()
     }
 
     /**
      * Emits volume in state model. Has start event
      */
-    public static Observable<VolumeState> getVolumeStateObservable(Context context, AudioManager audioManager) {
-        PublishSubject<Object> outputChangeSubject = PublishSubject.create();
+    fun getVolumeStateObservable(
+        context: Context,
+        audioManager: AudioManager,
+    ): Observable<VolumeState> {
+        val outputChangeSubject = PublishSubject.create<Any>()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            audioManager.registerAudioDeviceCallback(new AudioDeviceCallback() {
-                @Override
-                public void onAudioDevicesAdded(AudioDeviceInfo[] addedDevices) {
-                    super.onAudioDevicesAdded(addedDevices);
-                    outputChangeSubject.onNext(TRIGGER);
+            audioManager.registerAudioDeviceCallback(object : AudioDeviceCallback() {
+                override fun onAudioDevicesAdded(addedDevices: Array<AudioDeviceInfo>) {
+                    super.onAudioDevicesAdded(addedDevices)
+                    outputChangeSubject.onNext(Constants.TRIGGER)
                 }
 
-                @Override
-                public void onAudioDevicesRemoved(AudioDeviceInfo[] removedDevices) {
-                    super.onAudioDevicesRemoved(removedDevices);
-                    outputChangeSubject.onNext(TRIGGER);
+                override fun onAudioDevicesRemoved(removedDevices: Array<AudioDeviceInfo>) {
+                    super.onAudioDevicesRemoved(removedDevices)
+                    outputChangeSubject.onNext(Constants.TRIGGER)
                 }
-            }, null);
+            }, null)
         }
-        int maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
-        VolumeState volumeState = new VolumeState(maxVolume);
-        return outputChangeSubject.startWithItem(TRIGGER)
-                .switchMap(t -> RxReceivers.from("android.media.VOLUME_CHANGED_ACTION", context)
-                        .flatMapSingle(o -> safeGetStreamVolume(audioManager))
-                        .startWith(safeGetStreamVolume(audioManager))
-                        .map(volumeState::setVolume));
+        val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+        return outputChangeSubject.startWithItem(Constants.TRIGGER)
+            .switchMap {
+                RxReceivers.from("android.media.VOLUME_CHANGED_ACTION", context)
+                    .flatMapSingle { safeGetStreamVolumeSingle(audioManager) }
+                    .startWith(safeGetStreamVolumeSingle(audioManager))
+                    .map { volume -> VolumeState.from(volume, maxVolume) }
+            }
     }
 
-    private static Single<Integer> safeGetStreamVolume(AudioManager audioManager) {
-        return Single.create(emitter -> {
-            try {
-                emitter.onSuccess(audioManager.getStreamVolume(AudioManager.STREAM_MUSIC));
-            } catch (Exception ignored) {}
-        });
+    fun safeGetStreamVolume(audioManager: AudioManager): Int {
+        return try {
+            audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+        } catch (ignored: Exception) {
+            0
+        }
     }
+
+    private fun safeGetStreamVolumeSingle(audioManager: AudioManager): Single<Int> {
+        return Single.create { emitter ->
+            try {
+                emitter.onSuccess(audioManager.getStreamVolume(AudioManager.STREAM_MUSIC))
+            } catch (ignored: Exception) {}
+        }
+    }
+
 }

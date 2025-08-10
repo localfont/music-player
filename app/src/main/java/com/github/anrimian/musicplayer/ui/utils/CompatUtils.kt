@@ -1,5 +1,6 @@
 package com.github.anrimian.musicplayer.ui.utils
 
+import android.app.Activity
 import android.content.Context
 import android.graphics.drawable.Drawable
 import android.os.Build
@@ -18,6 +19,10 @@ fun Context.getDrawableCompat(@DrawableRes resId: Int): Drawable {
 
 fun Context.getColorCompat(@ColorLong resId: Int): Int {
     return ContextCompat.getColor(this, resId)
+}
+
+fun Activity.isMultiWindowMode(): Boolean {
+    return Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isInMultiWindowMode
 }
 
 fun createStaticLayout(text: CharSequence,

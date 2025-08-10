@@ -3,7 +3,7 @@ package com.github.anrimian.musicplayer.ui.playlist_screens.playlist.adapter
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import com.github.anrimian.filesync.models.state.file.FileSyncState
+import com.github.anrimian.fsync.models.state.file.FileSyncState
 import com.github.anrimian.musicplayer.R
 import com.github.anrimian.musicplayer.domain.models.composition.Composition
 import com.github.anrimian.musicplayer.domain.models.composition.CurrentComposition

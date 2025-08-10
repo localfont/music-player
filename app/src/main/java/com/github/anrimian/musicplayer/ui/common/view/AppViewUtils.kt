@@ -1,5 +1,6 @@
 package com.github.anrimian.musicplayer.ui.common.view
 
+import android.app.Activity
 import android.view.View
 import android.widget.TextView
 import androidx.annotation.DrawableRes
@@ -9,6 +10,10 @@ import com.github.anrimian.musicplayer.R
 import com.github.anrimian.musicplayer.ui.common.format.getHighlightColor
 import com.github.anrimian.musicplayer.ui.utils.AndroidUtils
 import com.github.anrimian.musicplayer.ui.utils.RepeatListener
+import com.github.anrimian.musicplayer.ui.utils.attachSystemBarsColor
+import com.github.anrimian.musicplayer.ui.utils.attrColor
+import com.github.anrimian.musicplayer.ui.utils.isLandscape
+import com.github.anrimian.musicplayer.ui.utils.isTablet
 import com.github.anrimian.musicplayer.ui.utils.runHighlightAnimation
 
 fun View.runHighlightAnimation() {
@@ -65,4 +70,9 @@ fun TextView.setSmallDrawableStart(@DrawableRes drawableRes: Int) {
     )
     val iconPadding = resources.getDimensionPixelSize(R.dimen.panel_secondary_icon_padding)
     this.compoundDrawablePadding = iconPadding
+}
+
+fun Activity.attachSystemBarsColor() {
+    val navBarBackground = if (!isTablet() && isLandscape()) R.attr.horizontalNavBarBackground else R.attr.playerPanelBackground
+    attachSystemBarsColor(attrColor(navBarBackground), attrColor(R.attr.toolbarColor))
 }

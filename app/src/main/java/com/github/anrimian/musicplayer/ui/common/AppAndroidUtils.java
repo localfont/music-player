@@ -12,6 +12,7 @@ import androidx.core.content.FileProvider;
 
 import com.github.anrimian.musicplayer.R;
 import com.github.anrimian.musicplayer.domain.interactors.player.PlayerInteractor;
+import com.github.anrimian.musicplayer.domain.interactors.player.PlayerType;
 import com.github.anrimian.musicplayer.infrastructure.service.SystemServiceControllerImpl;
 import com.github.anrimian.musicplayer.ui.common.format.MessagesUtils;
 import com.github.anrimian.musicplayer.ui.utils.AndroidUtils;
@@ -19,6 +20,8 @@ import com.github.anrimian.musicplayer.ui.utils.AndroidUtilsKt;
 import com.google.android.material.snackbar.Snackbar;
 
 import java.io.File;
+
+import javax.annotation.Nullable;
 
 public class AppAndroidUtils {
 
@@ -36,10 +39,16 @@ public class AppAndroidUtils {
     }
 
     public static void playPause(Context context, PlayerInteractor playerInteractor) {
+        playPause(context, playerInteractor, null);
+    }
+
+    public static void playPause(Context context,
+                                 PlayerInteractor playerInteractor,
+                                 @Nullable PlayerType playerType) {
         if (playerInteractor.isPlaying()) {
             playerInteractor.pause();
         } else {
-            SystemServiceControllerImpl.startPlayForegroundService(context);
+            SystemServiceControllerImpl.startPlayForegroundService(context, 0, playerType);
         }
     }
 

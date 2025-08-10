@@ -1,5 +1,6 @@
 package com.github.anrimian.musicplayer.infrastructure
 
+import android.annotation.SuppressLint
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
@@ -13,6 +14,7 @@ import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import android.view.KeyEvent
 import android.widget.Toast
+import com.github.anrimian.musicplayer.Constants
 import com.github.anrimian.musicplayer.R
 import com.github.anrimian.musicplayer.data.models.composition.source.ExternalCompositionSource
 import com.github.anrimian.musicplayer.data.utils.rx.retryWithDelay
@@ -29,7 +31,7 @@ import com.github.anrimian.musicplayer.domain.models.player.PlayerState
 import com.github.anrimian.musicplayer.domain.models.player.modes.RepeatMode
 import com.github.anrimian.musicplayer.domain.models.player.service.MusicNotificationSetting
 import com.github.anrimian.musicplayer.domain.models.utils.CompositionHelper
-import com.github.anrimian.musicplayer.domain.utils.functions.Optional
+import com.github.anrimian.musicplayer.domain.utils.functions.Opt
 import com.github.anrimian.musicplayer.infrastructure.receivers.AppMediaButtonReceiver
 import com.github.anrimian.musicplayer.infrastructure.service.SystemServiceControllerImpl
 import com.github.anrimian.musicplayer.infrastructure.service.media_browser.AppMediaBrowserService.Companion.ALBUM_ID_ARG
@@ -57,6 +59,7 @@ import com.github.anrimian.musicplayer.ui.common.error.parser.ErrorParser
 import com.github.anrimian.musicplayer.ui.common.format.FormatUtils
 import com.github.anrimian.musicplayer.ui.common.format.FormatUtils.formatCompositionAdditionalInfoForMediaBrowser
 import com.github.anrimian.musicplayer.ui.main.MainActivity
+import com.github.anrimian.musicplayer.ui.main.external_player.ExternalPlayerActivity
 import com.github.anrimian.musicplayer.ui.utils.getParcelable
 import com.github.anrimian.musicplayer.ui.utils.pIntentFlag
 import io.reactivex.rxjava3.core.Observable
@@ -88,10 +91,6 @@ class MediaSessionHandler(
         if (mediaSession == null) {
             mediaSession = MediaSessionCompat(context, MusicService::javaClass.name).apply {
                 setCallback(AppMediaSessionCallback())
-
-                val activityIntent = Intent(context, MainActivity::class.java)
-                val pActivityIntent = PendingIntent.getActivity(context, 0, activityIntent, pIntentFlag())
-                setSessionActivity(pActivityIntent)
 
                 val mediaButtonIntent = Intent(Intent.ACTION_MEDIA_BUTTON, null, context, AppMediaButtonReceiver::class.java)
                 val pMediaButtonIntent = PendingIntent.getBroadcast(context, 0, mediaButtonIntent, pIntentFlag())
@@ -130,22 +129,36 @@ class MediaSessionHandler(
             playerInteractor.getPlayerStateObservable(),
             libraryPlayerInteractor.getCurrentQueueItemObservable(),
             playerInteractor.getCurrentSourceObservable(),
-            playerInteractor.getTrackPositionObservable(),
-            playerInteractor.getCurrentPlaybackSpeedObservable(),
+            musicServiceInteractor.trackPositionChangeObservable,
+            musicServiceInteractor.playbackSpeedObservable,
             musicServiceInteractor.repeatModeObservable,
             musicServiceInteractor.randomModeObservable,
             playbackState::set
-        ).observeOn(uiScheduler)
+        ).flatMapSingle { state ->
+            musicServiceInteractor.trackPosition
+                .map { trackPosition ->
+                    state.trackPosition = trackPosition
+                    return@map state
+                }
+        }.observeOn(uiScheduler)
             .subscribe(this::onPlayBackStateReceived))
     }
 
     private fun onPlayBackStateReceived(playbackState: PlaybackState) {
         when(playbackState.currentSource) {
+            is LibraryCompositionSource -> processLibraryPlaybackState((playbackState))
             is ExternalCompositionSource -> processExternalPlaybackState(playbackState)
-            else -> processLibraryPlaybackState((playbackState))
+            else -> {
+                val playbackStateBuilder = PlaybackStateCompat.Builder()
+                    .setState(PlaybackStateCompat.STATE_NONE, PlaybackStateCompat.PLAYBACK_POSITION_UNKNOWN, 1.0f)
+                    .setActions(0L)
+                getMediaSession().setPlaybackState(playbackStateBuilder.build())
+                getMediaSession().isActive = false
+            }
         }
     }
 
+    @SuppressLint("WrongConstant")
     private fun processExternalPlaybackState(playbackState: PlaybackState) {
         val playbackStateBuilder = PlaybackStateCompat.Builder()
             .setActions(
@@ -179,6 +192,12 @@ class MediaSessionHandler(
             FormatUtils.getRepeatModeIcon(playbackState.repeatMode)
         )
 
+        playbackStateBuilder.addCustomAction(
+            CLOSE_ACTION_ID,
+            context.getString(R.string.close),
+            R.drawable.ic_close
+        )
+
         setMediaState(playbackStateBuilder, playbackState)
 
         playbackStateBuilder.setActiveQueueItemId(0L)
@@ -186,8 +205,14 @@ class MediaSessionHandler(
         getMediaSession().setPlaybackState(playbackStateBuilder.build())
         getMediaSession().setRepeatMode(getSessionRepeatMode(playbackState.repeatMode))
         getMediaSession().setShuffleMode(PlaybackStateCompat.SHUFFLE_MODE_NONE)
+
+        val activityIntent = Intent(context, ExternalPlayerActivity::class.java)
+        activityIntent.putExtra(Constants.Arguments.LAUNCH_PREPARE_ARG, false)
+        val pActivityIntent = PendingIntent.getActivity(context, 0, activityIntent, pIntentFlag())
+        getMediaSession().setSessionActivity(pActivityIntent)
     }
 
+    @SuppressLint("WrongConstant")
     private fun processLibraryPlaybackState(playbackState: PlaybackState) {
         val playbackStateBuilder = PlaybackStateCompat.Builder()
             .setActions(
@@ -246,6 +271,10 @@ class MediaSessionHandler(
             PlaybackStateCompat.SHUFFLE_MODE_NONE
         }
         getMediaSession().setShuffleMode(sessionShuffleMode)
+
+        val activityIntent = Intent(context, MainActivity::class.java)
+        val pActivityIntent = PendingIntent.getActivity(context, 0, activityIntent, pIntentFlag())
+        getMediaSession().setSessionActivity(pActivityIntent)
     }
 
     private fun getSessionRepeatMode(repeatMode: Int) = when (repeatMode) {
@@ -321,16 +350,14 @@ class MediaSessionHandler(
         val playerState = when (val playerState = playbackState.playerState) {
             PlayerState.IDLE -> PlaybackStateCompat.STATE_NONE
             PlayerState.PREPARING,
-            PlayerState.LOADING,
-            -> PlaybackStateCompat.STATE_CONNECTING
+            PlayerState.LOADING -> PlaybackStateCompat.STATE_CONNECTING
             PlayerState.PAUSE -> PlaybackStateCompat.STATE_PAUSED
             PlayerState.PLAY -> PlaybackStateCompat.STATE_PLAYING
             PlayerState.STOP -> PlaybackStateCompat.STATE_STOPPED
             is PlayerState.Error -> {
                 val errorCode = when(playerState.throwable) {
                     is UnsupportedSourceException,
-                    is CorruptedMediaFileException,
-                    -> PlaybackStateCompat.ERROR_CODE_NOT_SUPPORTED
+                    is CorruptedMediaFileException -> PlaybackStateCompat.ERROR_CODE_NOT_SUPPORTED
                     else -> PlaybackStateCompat.ERROR_CODE_APP_ERROR
                 }
                 val errorMessage = errorParser.parseError(playerState.throwable).message
@@ -345,11 +372,11 @@ class MediaSessionHandler(
     }
 
     private class MetadataState {
-        lateinit var currentSource: Optional<CompositionSource>
+        lateinit var currentSource: Opt<CompositionSource>
         lateinit var settings: MusicNotificationSetting
 
         fun set(
-            currentSource: Optional<CompositionSource>,
+            currentSource: Opt<CompositionSource>,
             settings: MusicNotificationSetting,
         ): MetadataState {
             this.currentSource = currentSource
@@ -370,7 +397,7 @@ class MediaSessionHandler(
         fun set(
             playerState: PlayerState,
             playQueueCurrentItem: PlayQueueEvent,
-            currentSource: Optional<CompositionSource>,
+            currentSource: Opt<CompositionSource>,
             trackPosition: Long,
             playbackSpeed: Float,
             repeatMode: Int,
@@ -418,13 +445,11 @@ class MediaSessionHandler(
         override fun onSetRepeatMode(repeatMode: Int) {
             val appRepeatMode = when (repeatMode) {
                 PlaybackStateCompat.REPEAT_MODE_INVALID,
-                PlaybackStateCompat.REPEAT_MODE_NONE,
-                -> {
+                PlaybackStateCompat.REPEAT_MODE_NONE -> {
                     RepeatMode.NONE
                 }
                 PlaybackStateCompat.REPEAT_MODE_GROUP,
-                PlaybackStateCompat.REPEAT_MODE_ALL,
-                -> {
+                PlaybackStateCompat.REPEAT_MODE_ALL -> {
                     RepeatMode.REPEAT_PLAY_QUEUE
                 }
                 PlaybackStateCompat.REPEAT_MODE_ONE -> {
@@ -524,6 +549,7 @@ class MediaSessionHandler(
                 SHUFFLE_ACTION_ID -> libraryPlayerInteractor.changeRandomMode()
                 REWIND_ACTION_ID -> musicServiceInteractor.fastSeekBackward()
                 FAST_FORWARD_ACTION_ID -> musicServiceInteractor.fastSeekForward()
+                CLOSE_ACTION_ID -> musicServiceInteractor.reset()
             }
         }
 
@@ -608,6 +634,7 @@ class MediaSessionHandler(
         const val SHUFFLE_ACTION_ID = "shuffle_action_id"
         const val FAST_FORWARD_ACTION_ID = "fast_forward_action_id"
         const val REWIND_ACTION_ID = "rewind_action_id"
+        const val CLOSE_ACTION_ID = "close_action_id"
 
         const val PLAY_EVENT_LOCK_WINDOW_MILLIS = 15L
     }

@@ -1,131 +1,129 @@
-package com.github.anrimian.musicplayer.domain.repositories;
+package com.github.anrimian.musicplayer.domain.repositories
 
-import com.github.anrimian.musicplayer.domain.models.albums.Album;
-import com.github.anrimian.musicplayer.domain.models.albums.AlbumComposition;
-import com.github.anrimian.musicplayer.domain.models.artist.Artist;
-import com.github.anrimian.musicplayer.domain.models.composition.Composition;
-import com.github.anrimian.musicplayer.domain.models.composition.CorruptionType;
-import com.github.anrimian.musicplayer.domain.models.composition.DeletedComposition;
-import com.github.anrimian.musicplayer.domain.models.composition.FullComposition;
-import com.github.anrimian.musicplayer.domain.models.folders.FileSource;
-import com.github.anrimian.musicplayer.domain.models.folders.FolderFileSource;
-import com.github.anrimian.musicplayer.domain.models.folders.FolderInfo;
-import com.github.anrimian.musicplayer.domain.models.folders.IgnoredFolder;
-import com.github.anrimian.musicplayer.domain.models.genres.Genre;
-import com.github.anrimian.musicplayer.domain.models.sync.FileKey;
-
-import java.util.List;
-
-import javax.annotation.Nullable;
-
-import io.reactivex.rxjava3.core.Completable;
-import io.reactivex.rxjava3.core.Observable;
-import io.reactivex.rxjava3.core.Single;
-import kotlin.Pair;
+import com.github.anrimian.musicplayer.domain.models.albums.Album
+import com.github.anrimian.musicplayer.domain.models.albums.AlbumComposition
+import com.github.anrimian.musicplayer.domain.models.artist.Artist
+import com.github.anrimian.musicplayer.domain.models.composition.Composition
+import com.github.anrimian.musicplayer.domain.models.composition.CorruptionType
+import com.github.anrimian.musicplayer.domain.models.composition.DeletedComposition
+import com.github.anrimian.musicplayer.domain.models.composition.FullComposition
+import com.github.anrimian.musicplayer.domain.models.folders.FileSource
+import com.github.anrimian.musicplayer.domain.models.folders.FolderFileSource
+import com.github.anrimian.musicplayer.domain.models.folders.FolderInfo
+import com.github.anrimian.musicplayer.domain.models.folders.IgnoredFolder
+import com.github.anrimian.musicplayer.domain.models.genres.Genre
+import com.github.anrimian.musicplayer.domain.models.sync.FileKey
+import io.reactivex.rxjava3.core.Completable
+import io.reactivex.rxjava3.core.Observable
+import io.reactivex.rxjava3.core.Single
 
 /**
  * Created on 24.10.2017.
  */
-
-public interface LibraryRepository {
+interface LibraryRepository {
 
     //compositions
-    Observable<List<Composition>> getAllCompositionsObservable(@Nullable String searchText);
+    fun getAllCompositionsObservable(searchText: String?): Observable<List<Composition>>
 
-    Observable<Composition> getCompositionObservable(long id);
+    fun getCompositionObservable(id: Long): Observable<Composition>
 
-    Observable<FullComposition> getFullCompositionObservable(long id);
+    fun getFullCompositionObservable(id: Long): Observable<FullComposition>
 
-    Observable<String> getLyricsObservable(long id);
+    fun getLyricsObservable(id: Long): Observable<String>
 
-    Completable writeErrorAboutComposition(CorruptionType errorType, Composition composition);
+    fun writeErrorAboutComposition(
+        corruptionType: CorruptionType?,
+        composition: Composition
+    ): Completable
 
-    Single<DeletedComposition> deleteComposition(Composition composition);
+    fun deleteComposition(composition: Composition): Single<DeletedComposition>
 
-    Single<List<DeletedComposition>> deleteCompositions(List<Composition> compositions);
+    fun deleteCompositions(compositions: List<Composition>): Single<List<DeletedComposition>>
 
     //folders
-    Observable<List<FileSource>> getFoldersInFolder(@Nullable Long folderId,
-                                                    @Nullable String searchQuery);
+    fun getFoldersInFolder(
+        folderId: Long?,
+        searchQuery: String?
+    ): Observable<List<FileSource>>
 
-    Observable<FolderInfo> getFolderObservable(long folderId);
+    fun getFolderObservable(folderId: Long): Observable<FolderInfo>
 
-    Single<List<Composition>> getAllCompositionsInFolder(@Nullable Long folderId);
+    fun getAllCompositionsInFolder(folderId: Long?): Single<List<Composition>>
 
-    Single<List<Composition>> getAllCompositionsInFolders(Iterable<FileSource> fileSources);
+    fun getAllCompositionsInFolders(fileSources: Iterable<FileSource>): Single<List<Composition>>
 
-    Single<List<DeletedComposition>> deleteFolder(FolderFileSource folder);
+    fun deleteFolder(folder: FolderFileSource): Single<List<DeletedComposition>>
 
-    Single<List<DeletedComposition>> deleteFolders(List<FileSource> folders);
+    fun deleteFolders(folders: List<FileSource>): Single<List<DeletedComposition>>
 
-    Single<List<Long>> getAllParentFolders(@Nullable Long folder);
+    fun getAllParentFolders(folderId: Long?): Single<List<Long>>
 
-    Single<List<Long>> getAllParentFoldersForComposition(long id);
+    fun getAllParentFoldersForComposition(compositionId: Long): Single<List<Long>>
 
-    Single<List<String>> getFolderNamesInPath(@Nullable String path);
+    fun getFolderNamesInPath(path: String?): Single<List<String>>
 
     //artists
-    Observable<List<Artist>> getArtistsObservable(@Nullable String searchText);
+    fun getArtistsObservable(searchText: String?): Observable<List<Artist>>
 
-    Single<List<Long>> getAllCompositionIdsByArtists(long artistId);
+    fun getAllCompositionIdsByArtists(artistId: Long): Single<List<Long>>
 
-    Single<List<Long>> getAllCompositionIdsByArtists(Iterable<Artist> artists);
+    fun getAllCompositionIdsByArtists(artists: Iterable<Artist>): Single<List<Long>>
 
-    Single<List<Composition>> getAllCompositionsByArtists(Iterable<Artist> artists);
+    fun getAllCompositionsByArtists(artists: Iterable<Artist>): Single<List<Composition>>
 
-    Single<List<Composition>> getAllCompositionsByArtistIds(Iterable<Long> artists);
+    fun getAllCompositionsByArtistIds(artists: Iterable<Long>): Single<List<Composition>>
 
-    Observable<List<Composition>> getCompositionsByArtist(long artistId);
+    fun getCompositionsByArtist(artistId: Long): Observable<List<Composition>>
 
-    Observable<Artist> getArtistObservable(long artistId);
+    fun getArtistObservable(artistId: Long): Observable<Artist>
 
-    Observable<List<Album>> getAllAlbumsForArtist(long artistId);
+    fun getAllAlbumsForArtist(artistId: Long): Observable<List<Album>>
 
-    Single<String[]> getAuthorNames();
+    fun getAuthorNames(): Single<Array<String>>
 
     //albums
-    Observable<List<Album>> getAlbumsObservable(@Nullable String searchText);
+    fun getAlbumsObservable(searchText: String?): Observable<List<Album>>
 
-    Observable<List<AlbumComposition>> getAlbumItemsObservable(long albumId);
+    fun getAlbumItemsObservable(albumId: Long): Observable<List<AlbumComposition>>
 
-    Single<List<Long>> getCompositionIdsInAlbum(long albumId);
+    fun getCompositionIdsInAlbum(albumId: Long): Single<List<Long>>
 
-    Single<List<Long>> getCompositionIdsInAlbums(Iterable<Album> albums);
+    fun getCompositionIdsInAlbums(albums: Iterable<Album>): Single<List<Long>>
 
-    Single<List<Composition>> getCompositionsInAlbums(Iterable<Album> albums);
+    fun getCompositionsInAlbums(albums: Iterable<Album>): Single<List<Composition>>
 
-    Single<List<Composition>> getCompositionsByAlbumIds(Iterable<Long> artists);
+    fun getCompositionsByAlbumIds(albumIds: Iterable<Long>): Single<List<Composition>>
 
-    Observable<Album> getAlbumObservable(long albumId);
+    fun getAlbumObservable(albumId: Long): Observable<Album>
 
-    Single<String[]> getAlbumNames();
+    fun getAlbumNames(): Single<Array<String>>
 
     //genres
-    Observable<List<Genre>> getGenresObservable(@Nullable String searchText);
+    fun getGenresObservable(searchText: String?): Observable<List<Genre>>
 
-    Observable<List<Composition>> getGenreItemsObservable(long genreId);
+    fun getGenreItemsObservable(genreId: Long): Observable<List<Composition>>
 
-    Single<List<Long>> getCompositionIdsInGenres(Iterable<Genre> genres);
+    fun getCompositionIdsInGenres(genres: Iterable<Genre>): Single<List<Long>>
 
-    Single<List<Composition>> getCompositionsInGenres(Iterable<Genre> genres);
+    fun getCompositionsInGenres(genres: Iterable<Genre>): Single<List<Composition>>
 
-    Single<List<Composition>> getCompositionsInGenresIds(Iterable<Long> genresIds);
+    fun getCompositionsInGenresIds(genresIds: Iterable<Long>): Single<List<Composition>>
 
-    Single<List<Long>> getAllCompositionsByGenre(long genreId);
+    fun getAllCompositionsByGenre(genreId: Long): Single<List<Long>>
 
-    Single<String[]> getGenreNames(long forCompositionId);
+    fun getGenreNames(forCompositionId: Long): Single<Array<String>>
 
-    Observable<Genre> getGenreObservable(long genreId);
+    fun getGenreObservable(genreId: Long): Observable<Genre>
 
     //ignored folders
-    Single<Pair<IgnoredFolder, List<FileKey>>> addFolderToIgnore(FolderFileSource folder);
+    fun addFolderToIgnore(folder: FolderFileSource): Single<Pair<IgnoredFolder, List<FileKey>>>
 
-    Single<List<FileKey>> addFolderToIgnore(IgnoredFolder folder);
+    fun addFolderToIgnore(folder: IgnoredFolder): Single<List<FileKey>>
 
-    Observable<List<IgnoredFolder>> getIgnoredFoldersObservable();
+    fun getIgnoredFoldersObservable(): Observable<List<IgnoredFolder>>
 
-    Single<List<FileKey>> deleteIgnoredFolder(IgnoredFolder folder);
+    fun deleteIgnoredFolder(folder: IgnoredFolder): Single<List<FileKey>>
 
-    void deleteIgnoredFolder(String folderRelativePath);
+    fun deleteIgnoredFolder(folderRelativePath: String): List<FileKey>
 
 }

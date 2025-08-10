@@ -13,7 +13,7 @@ import com.github.anrimian.musicplayer.domain.models.play_queue.PlayQueueItem
 import com.github.anrimian.musicplayer.domain.repositories.PlayQueueRepository
 import com.github.anrimian.musicplayer.domain.repositories.SettingsRepository
 import com.github.anrimian.musicplayer.domain.repositories.UiStateRepository
-import com.github.anrimian.musicplayer.domain.utils.functions.Optional
+import com.github.anrimian.musicplayer.domain.utils.functions.Opt
 import com.github.anrimian.musicplayer.domain.utils.rx.CacheFlowable
 import io.reactivex.rxjava3.core.BackpressureStrategy
 import io.reactivex.rxjava3.core.Completable
@@ -239,11 +239,16 @@ class PlayQueueRepositoryImpl(
             throw TooManyPlayQueueItemsException()
         }
         consumeDeletedItemEvent = true
+        // clearCache&updateQueueTime means:
+        // time -> we clear queue in presenter
+        // clear cache -> we don't receive old list as first event
+        playQueueObservable.clearCache()
         val itemId = playQueueDao.insertNewPlayQueue(
             compositionIds,
             settingsPreferences.isRandomPlayingEnabled,
             startPosition
         )
+        playQueueCreateTimeSubject.onNext(System.currentTimeMillis())
         setCurrentItem(itemId)
         consumeDeletedItemEvent = false
     }
@@ -257,9 +262,10 @@ class PlayQueueRepositoryImpl(
             .flatMap(::checkForExisting)
             .map(::PlayQueueEvent)
             .retryWithDelay(10, 5, TimeUnit.SECONDS)
+            .onErrorReturnItem(PlayQueueEvent(null))
     }
 
-    private fun checkForExisting(itemOpt: Optional<PlayQueueItem>): Observable<PlayQueueItem> {
+    private fun checkForExisting(itemOpt: Opt<PlayQueueItem>): Observable<PlayQueueItem> {
         return Observable.create { emitter ->
             val item = itemOpt.value
             if (item == null) {

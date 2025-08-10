@@ -1,27 +1,22 @@
 package com.github.anrimian.musicplayer.ui.utils;
 
 import static android.text.TextUtils.isEmpty;
-import static android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
 import static androidx.core.content.ContextCompat.getColor;
 
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.ActivityManager;
-import android.app.Dialog;
 import android.content.ActivityNotFoundException;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
-import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.drawable.Animatable;
 import android.graphics.drawable.Drawable;
-import android.graphics.drawable.GradientDrawable;
-import android.graphics.drawable.LayerDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.SystemClock;
@@ -35,19 +30,16 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
-import android.view.WindowMetrics;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
-import androidx.annotation.AttrRes;
 import androidx.annotation.ColorInt;
 import androidx.annotation.DimenRes;
 import androidx.annotation.DrawableRes;
 import androidx.annotation.MenuRes;
-import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
 import androidx.appcompat.content.res.AppCompatResources;
@@ -75,6 +67,11 @@ public class AndroidUtils {
     public static int getColorFromAttr(Context ctx, int attributeId) {
         int colorId = getResourceIdFromAttr(ctx, attributeId);
         return getColor(ctx, colorId);
+    }
+
+    public static int getDimenFromAttr(Context ctx, int attributeId) {
+        int resId = getResourceIdFromAttr(ctx, attributeId);
+        return ctx.getResources().getDimensionPixelSize(resId);
     }
 
     public static Drawable getDrawableFromAttr(Context ctx, int attributeId) {
@@ -133,16 +130,6 @@ public class AndroidUtils {
         }, 200);
     }
 
-    public static int getStatusBarHeight(Context context) {
-        Resources resources = context.getResources();
-        int result = 0;
-        int resourceId = resources.getIdentifier("status_bar_height", "dimen", "android");
-        if (resourceId > 0) {
-            result = resources.getDimensionPixelSize(resourceId);
-        }
-        return result;
-    }
-
     @Nullable
     public static View getContentView(@Nullable Activity activity) {
         if (activity != null) {
@@ -153,12 +140,6 @@ public class AndroidUtils {
             }
         }
         return null;
-    }
-
-    public static void setStatusBarColor(Window window, @ColorInt int color) {
-        if (Build.VERSION.SDK_INT >= 21) {
-            window.setStatusBarColor(color);
-        }
     }
 
     public static void sendEmail(Context ctx, String email) {
@@ -219,7 +200,10 @@ public class AndroidUtils {
     public static List<MenuItem> getMenuItems(Menu menu) {
         List<MenuItem> items = new ArrayList<>(menu.size());
         for (int i = 0; i < menu.size(); i++) {
-            items.add(menu.getItem(i));
+            MenuItem item = menu.getItem(i);
+            if (item.isVisible()) {
+                items.add(item);
+            }
         }
         return items;
     }
@@ -249,75 +233,6 @@ public class AndroidUtils {
         } else {
             v.vibrate(vibrationTime);
         }
-    }
-
-    public static void setNavigationBarColorAttr(Activity activity, @AttrRes int attrRes) {
-        setNavigationBarColor(activity, getColorFromAttr(activity, attrRes));
-    }
-
-    public static void setNavigationBarColor(Activity activity, @ColorInt int color) {
-        Configuration configuration = activity.getResources().getConfiguration();
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
-                && configuration.orientation == Configuration.ORIENTATION_PORTRAIT) {
-
-            Window window = activity.getWindow();
-
-            window.setNavigationBarColor(color);
-
-            View decorView = window.getDecorView();
-            int flags = decorView.getSystemUiVisibility();
-            if (ColorUtils.calculateLuminance(color) >= 0.5f) {//white
-                flags |= SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
-            } else if ((flags & SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR) == SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR) {
-                flags = flags ^ SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
-            }
-            decorView.setSystemUiVisibility(flags);
-        }
-    }
-
-    public static void setDialogNavigationBarColorAttr(@NonNull Dialog dialog, @AttrRes int attrRes) {
-        Configuration configuration = dialog.getContext().getResources().getConfiguration();
-        boolean isSmartphone = configuration.smallestScreenWidthDp < 600;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
-                !(configuration.orientation == Configuration.ORIENTATION_LANDSCAPE && !isSmartphone)) {
-            Window window = dialog.getWindow();
-            if (window != null) {
-                int color = AndroidUtils.getColorFromAttr(dialog.getContext(), attrRes);
-                int screenHeight = getScreenHeight(window);
-
-                GradientDrawable dimDrawable = new GradientDrawable();
-
-                GradientDrawable navigationBarDrawable = new GradientDrawable();
-                navigationBarDrawable.setShape(GradientDrawable.RECTANGLE);
-                navigationBarDrawable.setColor(color);
-
-                Drawable[] layers = {dimDrawable, navigationBarDrawable};
-
-                LayerDrawable windowBackground = new LayerDrawable(layers);
-                windowBackground.setLayerInsetTop(1, screenHeight);
-
-                window.setBackgroundDrawable(windowBackground);
-                window.setNavigationBarColor(color);
-
-                if (ColorUtils.calculateLuminance(color) >= 0.5f) {//white
-                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {//fast fix for dialog nav bar on android 11
-                        View decorView = window.getDecorView();
-                        decorView.setSystemUiVisibility(SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
-                    }
-                }
-            }
-        }
-    }
-
-    public static int getScreenHeight(@NonNull Window window) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            WindowMetrics windowMetrics = window.getWindowManager().getCurrentWindowMetrics();
-            return windowMetrics.getBounds().height();
-        }
-        DisplayMetrics displayMetrics = new DisplayMetrics();
-        window.getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
-        return displayMetrics.heightPixels;
-
     }
 
     public static void clearVectorAnimationInfo(ImageView imageView) {

@@ -1,60 +1,55 @@
-package com.github.anrimian.musicplayer.ui.utils.dialogs.menu;
+package com.github.anrimian.musicplayer.ui.utils.dialogs.menu
 
-import static com.github.anrimian.musicplayer.ui.utils.AndroidUtils.getColorFromAttr;
+import android.view.LayoutInflater
+import android.view.MenuItem
+import android.view.View
+import android.view.ViewGroup
+import android.widget.ImageView
+import android.widget.TextView
+import androidx.annotation.LayoutRes
+import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.RecyclerView
+import com.github.anrimian.musicplayer.R
+import com.github.anrimian.musicplayer.ui.common.compat.CompatUtils
+import com.github.anrimian.musicplayer.ui.utils.attrColor
+import com.github.anrimian.musicplayer.ui.utils.context
 
-import android.graphics.drawable.Drawable;
-import android.view.LayoutInflater;
-import android.view.MenuItem;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.ImageView;
-import android.widget.TextView;
+class MenuViewHolder(
+    inflater: LayoutInflater,
+    parent: ViewGroup?,
+    @LayoutRes menuViewRes: Int,
+    onItemClickListener: (MenuItem) -> Unit
+) : RecyclerView.ViewHolder(inflater.inflate(menuViewRes, parent, false)) {
 
-import androidx.annotation.LayoutRes;
-import androidx.core.content.ContextCompat;
-import androidx.recyclerview.widget.RecyclerView;
+    private val tvTitle: TextView = itemView.findViewById(R.id.tvTitle)
+    private val ivIcon: ImageView = itemView.findViewById(R.id.iv_icon)
 
-import com.github.anrimian.musicplayer.R;
-import com.github.anrimian.musicplayer.ui.common.compat.CompatUtils;
-import com.github.anrimian.musicplayer.ui.utils.OnItemClickListener;
+    private lateinit var menuItem: MenuItem
 
-class MenuViewHolder extends RecyclerView.ViewHolder {
-
-    private final TextView tvTitle;
-    private final ImageView ivIcon;
-
-    private MenuItem menuItem;
-
-    MenuViewHolder(LayoutInflater inflater,
-                   ViewGroup parent,
-                   @LayoutRes int menuViewRes,
-                   OnItemClickListener<MenuItem> onItemClickListener) {
-        super(inflater.inflate(menuViewRes, parent, false));
-        tvTitle = itemView.findViewById(R.id.tvTitle);
-        ivIcon = itemView.findViewById(R.id.iv_icon);
-
-        itemView.setOnClickListener(v -> onItemClickListener.onItemClick(menuItem));
+    init {
+        itemView.setOnClickListener { onItemClickListener(menuItem) }
     }
 
-    void bind(MenuItem menuItem) {
-        this.menuItem = menuItem;
+    fun bind(menuItem: MenuItem) {
+        this.menuItem = menuItem
 
-        itemView.setEnabled(menuItem.isEnabled());
+        itemView.isEnabled = menuItem.isEnabled
 
-        tvTitle.setText(menuItem.getTitle());
-        tvTitle.setEnabled(menuItem.isEnabled());
-        if (menuItem.isChecked()) {
-            tvTitle.setTextColor(getColorFromAttr(itemView.getContext(), R.attr.colorAccent));
+        tvTitle.text = menuItem.title
+        tvTitle.isEnabled = menuItem.isEnabled
+        if (menuItem.isChecked) {
+            tvTitle.setTextColor(context.attrColor(R.attr.colorAccent))
         } else {
-            tvTitle.setTextColor(ContextCompat.getColorStateList(itemView.getContext(), R.color.color_text_primary));
-            CompatUtils.setColorTextPrimaryColor(tvTitle);
+            tvTitle.setTextColor(
+                ContextCompat.getColorStateList(context, R.color.color_text_primary)
+            )
+            CompatUtils.setColorTextPrimaryColor(tvTitle)
         }
 
-        Drawable icon = menuItem.getIcon();
-        ivIcon.setVisibility(icon == null? View.GONE: View.VISIBLE);
-        ivIcon.setColorFilter(tvTitle.getCurrentTextColor());
-        ivIcon.setImageDrawable(icon);
-        ivIcon.setContentDescription(menuItem.getTitle());
+        val icon = menuItem.icon
+        ivIcon.visibility = if (icon == null) View.GONE else View.VISIBLE
+        ivIcon.setColorFilter(tvTitle.currentTextColor)
+        ivIcon.setImageDrawable(icon)
+        ivIcon.contentDescription = menuItem.title
     }
-
 }

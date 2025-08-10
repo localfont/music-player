@@ -76,6 +76,7 @@ class PlayListsModule {
         compositionsDaoWrapper: CompositionsDaoWrapper,
         playListsDaoWrapper: PlayListsDaoWrapper,
         playlistFilesStorage: PlaylistFilesStorage,
+        @Named(SchedulerModule.IO_SCHEDULER) ioScheduler: Scheduler,
         @Named(SchedulerModule.DB_SCHEDULER) dbScheduler: Scheduler,
         @Named(SchedulerModule.SLOW_BG_SCHEDULER) slowBgScheduler: Scheduler
     ): PlayListsRepository = PlayListsRepositoryImpl(
@@ -85,6 +86,7 @@ class PlayListsModule {
         compositionsDaoWrapper,
         playListsDaoWrapper,
         playlistFilesStorage,
+        ioScheduler,
         dbScheduler,
         slowBgScheduler
     )

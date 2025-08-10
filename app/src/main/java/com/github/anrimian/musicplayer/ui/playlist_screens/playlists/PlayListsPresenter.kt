@@ -115,7 +115,7 @@ class PlayListsPresenter(
         sharePlaylistsCompositions(ArrayList(selectedPlaylists))
     }
 
-    fun onSelectionModeBackPressed() {
+    fun onExitSelectionModeClicked() {
         closeSelectionMode()
     }
 

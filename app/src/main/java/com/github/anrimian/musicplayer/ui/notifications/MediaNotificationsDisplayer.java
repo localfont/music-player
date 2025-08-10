@@ -20,6 +20,7 @@ public interface MediaNotificationsDisplayer {
                                      @Nullable CompositionSource source,
                                      MediaSessionCompat mediaSession,
                                      int repeatMode,
+                                     boolean randomMode,
                                      @Nullable MusicNotificationSetting notificationSetting,
                                      boolean reloadCover);
 
@@ -27,6 +28,7 @@ public interface MediaNotificationsDisplayer {
                                       @Nullable CompositionSource source,
                                       MediaSessionCompat mediaSession,
                                       int repeatMode,
+                                      boolean randomMode,
                                       MusicNotificationSetting notificationSetting,
                                       boolean reloadCover);
 

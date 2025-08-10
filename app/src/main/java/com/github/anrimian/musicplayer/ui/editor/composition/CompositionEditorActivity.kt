@@ -7,10 +7,12 @@ import android.text.InputType
 import android.view.MenuItem
 import android.view.View
 import android.widget.TextView
+import androidx.core.view.WindowCompat
 import androidx.recyclerview.widget.ConcatAdapter
 import androidx.recyclerview.widget.ItemTouchHelper
 import com.beloo.widget.chipslayoutmanager.ChipsLayoutManager
-import com.github.anrimian.filesync.models.state.file.FileSyncState
+import com.github.anrimian.fsync.models.state.file.FileSyncState
+import com.github.anrimian.fsync.models.state.file.FileTaskType
 import com.github.anrimian.musicplayer.Constants
 import com.github.anrimian.musicplayer.Constants.Tags
 import com.github.anrimian.musicplayer.R
@@ -29,25 +31,26 @@ import com.github.anrimian.musicplayer.ui.common.dialogs.input.InputTextDialogFr
 import com.github.anrimian.musicplayer.ui.common.error.ErrorCommand
 import com.github.anrimian.musicplayer.ui.common.format.FormatUtils
 import com.github.anrimian.musicplayer.ui.common.format.MessagesUtils
-import com.github.anrimian.musicplayer.ui.common.format.asInt
 import com.github.anrimian.musicplayer.ui.common.format.showFileSyncState
 import com.github.anrimian.musicplayer.ui.common.format.showSnackbar
+import com.github.anrimian.musicplayer.ui.common.view.attachSystemBarsColor
 import com.github.anrimian.musicplayer.ui.editor.common.ErrorHandler
 import com.github.anrimian.musicplayer.ui.editor.composition.list.GenreChipViewHolder
 import com.github.anrimian.musicplayer.ui.editor.composition.list.GenreChipsAdapter
 import com.github.anrimian.musicplayer.ui.editor.lyrics.LyricsEditorActivity
-import com.github.anrimian.musicplayer.ui.utils.AndroidUtils
 import com.github.anrimian.musicplayer.ui.utils.ViewUtils
+import com.github.anrimian.musicplayer.ui.utils.applyBottomInsets
+import com.github.anrimian.musicplayer.ui.utils.applyHorizontalInsets
+import com.github.anrimian.musicplayer.ui.utils.applyTopInsets
 import com.github.anrimian.musicplayer.ui.utils.dialogs.ProgressDialogFragment
 import com.github.anrimian.musicplayer.ui.utils.dialogs.menu.MenuDialogFragment
 import com.github.anrimian.musicplayer.ui.utils.fragments.DialogFragmentDelayRunner
 import com.github.anrimian.musicplayer.ui.utils.fragments.DialogFragmentRunner
 import com.github.anrimian.musicplayer.ui.utils.setDrawableStart
-import com.github.anrimian.musicplayer.ui.utils.setToolbar
-import com.github.anrimian.musicplayer.ui.utils.slidr.SlidrPanel
 import com.github.anrimian.musicplayer.ui.utils.views.recycler_view.SingleItemAdapter
 import com.github.anrimian.musicplayer.ui.utils.views.recycler_view.touch_helper.drag_and_drop.SimpleItemTouchHelperCallback
 import com.google.android.material.snackbar.Snackbar
+import com.r0adkll.slidr.Slidr
 import moxy.ktx.moxyPresenter
 
 class CompositionEditorActivity : BaseMvpAppCompatActivity(), CompositionEditorView {
@@ -91,12 +94,17 @@ class CompositionEditorActivity : BaseMvpAppCompatActivity(), CompositionEditorV
     override fun onCreate(savedInstanceState: Bundle?) {
         Components.getAppComponent().themeController().applyCurrentSlidrTheme(this)
         super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         binding = ActivityCompositionEditBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        AndroidUtils.setNavigationBarColorAttr(this, android.R.attr.colorBackground)
+        binding.toolbar.applyTopInsets()
+        binding.clContainer.applyBottomInsets()
+        binding.container.applyHorizontalInsets()
+        attachSystemBarsColor()
 
-        setToolbar(binding.toolbar, R.string.edit_tags)
+        binding.toolbar.setNavigationButtonBackClickListener { onBackPressedDispatcher.onBackPressed() }
+        binding.toolbar.setTitle(R.string.edit_tags)
 
         val touchHelperCallback = SimpleItemTouchHelperCallback(
             horizontalDrag = true,
@@ -116,42 +124,37 @@ class CompositionEditorActivity : BaseMvpAppCompatActivity(), CompositionEditorV
         )
         binding.rvGenres.layoutManager = ChipsLayoutManager.newBuilder(this).build()
 
-        binding.changeAuthorClickableArea.setOnClickListener { presenter.onChangeAuthorClicked() }
+        binding.changeArtistClickableArea.setOnClickListener { presenter.onChangeAuthorClicked() }
         binding.changeTitleClickableArea.setOnClickListener { presenter.onChangeTitleClicked() }
-        binding.changeFilenameClickableArea.setOnClickListener { presenter.onChangeFileNameClicked() }
+        binding.filenameClickableArea.setOnClickListener { presenter.onChangeFileNameClicked() }
         binding.changeAlbumClickableArea.setOnClickListener { presenter.onChangeAlbumClicked() }
         binding.changeAlbumArtistClickableArea.setOnClickListener { presenter.onChangeAlbumArtistClicked() }
-        binding.ivGenreEdit.setOnClickListener { presenter.onAddGenreItemClicked() }
-        binding.changeCoverClickableArea.setOnClickListener { presenter.onChangeCoverClicked() }
+        binding.coverClickableArea.setOnClickListener { presenter.onChangeCoverClicked() }
         binding.changeTrackNumberClickableArea.setOnClickListener { presenter.onChangeTrackNumberClicked() }
         binding.changeDiscNumberClickableArea.setOnClickListener { presenter.onChangeDiscNumberClicked() }
         binding.changeCommentClickableArea.setOnClickListener { presenter.onChangeCommentClicked() }
         binding.changeLyricsClickableArea.setOnClickListener { presenter.onChangeLyricsClicked() }
 
-        ViewUtils.onLongClick(binding.changeAuthorClickableArea) {
-            copyText(binding.tvAuthor, binding.tvAuthorHint)
+        ViewUtils.onLongClick(binding.changeArtistClickableArea) {
+            copyText(binding.tvArtist, binding.tvArtistHint)
         }
         ViewUtils.onLongClick(binding.changeTitleClickableArea) {
             copyText(binding.tvTitle, binding.tvTitleHint)
         }
-        ViewUtils.onLongClick(binding.changeFilenameClickableArea) {
+        ViewUtils.onLongClick(binding.filenameClickableArea) {
             presenter.onCopyFileNameClicked()
         }
         ViewUtils.onLongClick(binding.changeAlbumClickableArea) {
             copyText(binding.tvAlbum, binding.tvAlbumHint)
         }
         ViewUtils.onLongClick(binding.changeAlbumArtistClickableArea) {
-            copyText(binding.tvAlbumArtist, binding.tvAlbumAuthorHint)
+            copyText(binding.tvAlbumArtist, binding.tvAlbumArtistHint)
         }
         ViewUtils.onLongClick(binding.changeLyricsClickableArea) {
             copyText(binding.tvLyrics, binding.tvLyricsHint)
         }
 
-        SlidrPanel.attachWithNavBarChange(
-            this,
-            R.attr.playerPanelBackground,
-            android.R.attr.colorBackground
-        )
+        Slidr.attach(this)
 
         val fm = supportFragmentManager
         errorHandler = ErrorHandler(
@@ -196,7 +199,8 @@ class CompositionEditorActivity : BaseMvpAppCompatActivity(), CompositionEditorV
             fragment.setOnCompleteListener(presenter::onNewCommentEntered)
         }
         coverMenuDialogRunner = DialogFragmentRunner(fm, Tags.EDIT_COVER_TAG) { fragment ->
-            fragment.setOnCompleteListener(this::onCoverActionSelected) }
+            fragment.setOnCompleteListener(this::onCoverActionSelected)
+        }
         progressDialogRunner = DialogFragmentDelayRunner(
             fm,
             Tags.PROGRESS_DIALOG_TAG,
@@ -212,7 +216,7 @@ class CompositionEditorActivity : BaseMvpAppCompatActivity(), CompositionEditorV
     }
 
     override fun showCompositionLoadingError(errorCommand: ErrorCommand) {
-        binding.tvAuthor.text = errorCommand.message
+        binding.tvArtist.text = errorCommand.message
     }
 
     override fun showComposition(composition: FullComposition, genres: List<String>) {
@@ -223,13 +227,11 @@ class CompositionEditorActivity : BaseMvpAppCompatActivity(), CompositionEditorV
 
         val albumFieldsVisibility = if (album == null) View.GONE else View.VISIBLE
         binding.tvAlbumArtist.visibility = albumFieldsVisibility
-        binding.tvAlbumAuthorHint.visibility = albumFieldsVisibility
-        binding.ivAlbumArtist.visibility = albumFieldsVisibility
+        binding.tvAlbumArtistHint.visibility = albumFieldsVisibility
         binding.dividerAlbumArtist.visibility = albumFieldsVisibility
 
         binding.tvTrackNumber.visibility = albumFieldsVisibility
         binding.tvTrackNumberHint.visibility = albumFieldsVisibility
-        binding.ivTrackNumber.visibility = albumFieldsVisibility
         binding.dividerTrackNumber.visibility = albumFieldsVisibility
         binding.tvDiscNumber.visibility = albumFieldsVisibility
         binding.tvDiscNumberHint.visibility = albumFieldsVisibility
@@ -237,7 +239,7 @@ class CompositionEditorActivity : BaseMvpAppCompatActivity(), CompositionEditorV
 
         binding.tvAlbumArtist.text = composition.albumArtist
         binding.tvLyrics.text = composition.lyrics
-        binding.tvAuthor.text = FormatUtils.formatAuthor(composition.artist, this)
+        binding.tvArtist.text = FormatUtils.formatAuthor(composition.artist, this)
         binding.tvFilename.text = FileUtils.formatFileName(composition.fileName, true)
         binding.tvTrackNumber.text = TextUtils.toString(composition.trackNumber)
         binding.tvDiscNumber.text = TextUtils.toString(composition.discNumber)
@@ -437,11 +439,11 @@ class CompositionEditorActivity : BaseMvpAppCompatActivity(), CompositionEditorV
         progressDialogRunner.cancel()
     }
 
-    override fun showSyncState(fileSyncState: FileSyncState, composition: FullComposition) {
+    override fun showSyncState(fileSyncState: FileSyncState?, composition: FullComposition) {
         val isFileRemote = composition.storageId == null && composition.initialSource == InitialSource.REMOTE
         binding.pvFileState.showFileSyncState(fileSyncState, isFileRemote)
         progressDialogRunner.runAction { dialog ->
-            val message = if (fileSyncState is FileSyncState.Downloading) {
+            val message = if (fileSyncState?.taskType == FileTaskType.DOWNLOAD) {
                 val progress = fileSyncState.getProgress()
                 val progressPercentage = progress.asInt()
                 dialog.setProgress(progressPercentage)

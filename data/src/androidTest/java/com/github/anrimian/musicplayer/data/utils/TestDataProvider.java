@@ -2,7 +2,6 @@ package com.github.anrimian.musicplayer.data.utils;
 
 import androidx.collection.LongSparseArray;
 
-import com.github.anrimian.musicplayer.data.database.entities.composition.CompositionEntity;
 import com.github.anrimian.musicplayer.data.database.entities.play_queue.PlayQueueEntity;
 import com.github.anrimian.musicplayer.data.storage.providers.music.StorageComposition;
 import com.github.anrimian.musicplayer.data.storage.providers.music.StorageFullComposition;
@@ -21,36 +20,6 @@ import java.util.Map;
  * Created on 16.04.2018.
  */
 public class TestDataProvider {
-
-    public static CompositionEntity composition(Long artistId,
-                                                Long albumId,
-                                                String title,
-                                                Long folderId) {
-        return new CompositionEntity(
-                artistId,
-                albumId,
-                folderId,
-                title,
-                null,
-                null,
-                null,
-                null,
-//                "test file name",
-                "test file path",
-                100L,
-                100L,
-                null,
-                new Date(),
-                new Date(),
-                new Date(),
-                new Date(),
-                null,
-                InitialSource.LOCAL);
-    }
-
-    public static CompositionEntity composition(Long artistId, Long albumId, String title) {
-        return composition(artistId, albumId, title, null);
-    }
 
     public static List<StoragePlayListItem> getFakeStoragePlayListItems() {
         List<StoragePlayListItem> items = new ArrayList<>();

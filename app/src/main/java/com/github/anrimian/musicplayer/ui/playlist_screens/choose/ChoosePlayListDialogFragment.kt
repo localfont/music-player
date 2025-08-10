@@ -2,11 +2,11 @@ package com.github.anrimian.musicplayer.ui.playlist_screens.choose
 
 import android.annotation.SuppressLint
 import android.app.Dialog
-import android.content.DialogInterface
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
-import androidx.annotation.AttrRes
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.github.anrimian.musicplayer.Constants
 import com.github.anrimian.musicplayer.R
@@ -16,66 +16,78 @@ import com.github.anrimian.musicplayer.domain.models.playlist.PlayList
 import com.github.anrimian.musicplayer.ui.common.dialogs.AppBottomSheetDialog
 import com.github.anrimian.musicplayer.ui.common.dialogs.showConfirmDeleteDialog
 import com.github.anrimian.musicplayer.ui.common.error.ErrorCommand
-import com.github.anrimian.musicplayer.ui.common.format.MessagesUtils
+import com.github.anrimian.musicplayer.ui.common.format.showSnackbar
 import com.github.anrimian.musicplayer.ui.common.menu.PopupMenuWindow
+import com.github.anrimian.musicplayer.ui.common.toolbar.ToolbarBackgroundDrawable
 import com.github.anrimian.musicplayer.ui.playlist_screens.choose.adapter.PlayListsAdapter
 import com.github.anrimian.musicplayer.ui.playlist_screens.create.CreatePlayListDialogFragment
 import com.github.anrimian.musicplayer.ui.playlist_screens.rename.newRenamePlaylistDialog
 import com.github.anrimian.musicplayer.ui.utils.AndroidUtils
 import com.github.anrimian.musicplayer.ui.utils.ViewUtils
+import com.github.anrimian.musicplayer.ui.utils.applyBottomInsets
+import com.github.anrimian.musicplayer.ui.utils.attrColor
+import com.github.anrimian.musicplayer.ui.utils.colorFromAttr
 import com.github.anrimian.musicplayer.ui.utils.fragments.safeShow
+import com.github.anrimian.musicplayer.ui.utils.getColorCompat
+import com.github.anrimian.musicplayer.ui.utils.getDimension
 import com.github.anrimian.musicplayer.ui.utils.views.bottom_sheet.SimpleBottomSheetCallback
 import com.github.anrimian.musicplayer.ui.utils.views.delegate.BoundValuesDelegate
 import com.github.anrimian.musicplayer.ui.utils.views.delegate.DelegateManager
+import com.github.anrimian.musicplayer.ui.utils.views.delegate.ElevationDelegate
+import com.github.anrimian.musicplayer.ui.utils.views.delegate.InsetPaddingTopDelegate
+import com.github.anrimian.musicplayer.ui.utils.views.delegate.ItemDrawableTopCornersDelegate
 import com.github.anrimian.musicplayer.ui.utils.views.delegate.MotionLayoutDelegate
+import com.github.anrimian.musicplayer.ui.utils.views.delegate.ReverseDelegate
 import com.github.anrimian.musicplayer.ui.utils.views.delegate.SlideDelegate
-import com.github.anrimian.musicplayer.ui.utils.views.delegate.StatusBarColorDelegate
 import com.github.anrimian.musicplayer.ui.utils.views.delegate.TextColorDelegate
-import com.github.anrimian.musicplayer.ui.utils.views.delegate.TextSizeDelegate
+import com.github.anrimian.musicplayer.ui.utils.views.delegate.TintDelegate
+import com.github.anrimian.musicplayer.ui.utils.views.delegate.ToolbarBackgroundStatusBarDelegate
+import com.github.anrimian.musicplayer.ui.utils.views.delegate.ToolbarDrawableColorDelegate
+import com.github.anrimian.musicplayer.ui.utils.views.delegate.ToolbarDrawableTopCornersDelegate
 import com.github.anrimian.musicplayer.ui.utils.views.delegate.VisibilityDelegate
-import com.github.anrimian.musicplayer.ui.utils.views.recycler_view.RecyclerViewUtils
+import com.github.anrimian.musicplayer.ui.utils.views.recycler_view.ItemDrawable
 import com.google.android.material.bottomsheet.BottomSheetBehavior
-import com.google.android.material.snackbar.Snackbar
 import moxy.MvpBottomSheetDialogFragment
 import moxy.ktx.moxyPresenter
 
-fun newChoosePlayListDialogFragment(extra: Bundle?): ChoosePlayListDialogFragment {
-    return newChoosePlayListDialogFragment(0, extra)
-}
-
-@JvmOverloads
-fun newChoosePlayListDialogFragment(
-    @AttrRes statusBarColorAttr: Int,
-    extra: Bundle? = null
-) = ChoosePlayListDialogFragment().apply {
-    val args = Bundle()
-    args.putInt(Constants.Arguments.STATUS_BAR_COLOR_ATTR_ARG, statusBarColorAttr)
-    args.putBundle(Constants.Arguments.EXTRA_DATA_ARG, extra)
-    arguments = args
-}
-
-
 class ChoosePlayListDialogFragment : MvpBottomSheetDialogFragment(), ChoosePlayListView {
+
+    companion object {
+        fun newInstance(extra: Bundle? = null) = ChoosePlayListDialogFragment().apply {
+            arguments = Bundle().apply {
+                putBundle(Constants.Arguments.EXTRA_DATA_ARG, extra)
+            }
+        }
+    }
 
     private val presenter by moxyPresenter { Components.getAppComponent().choosePlayListPresenter() }
 
-    private lateinit var viewBinding: DialogSelectPlayListBinding
+    private lateinit var binding: DialogSelectPlayListBinding
 
     private lateinit var adapter: PlayListsAdapter
     private lateinit var slideDelegate: SlideDelegate
 
+    private lateinit var toolbarBackgroundDrawable: ToolbarBackgroundDrawable
+    private lateinit var backgroundDrawable: ItemDrawable
+
     private var onCompleteListener: ((PlayList) -> Unit)? = null
     private var complexCompleteListener: ((PlayList, Bundle) -> Unit)? = null
 
+    private var insetTop = 0
+
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
-        return AppBottomSheetDialog(requireContext(), theme)
+        return AppBottomSheetDialog(
+            requireContext(),
+            theme,
+            requireContext().colorFromAttr(R.attr.listItemBackground)
+        )
     }
 
     @SuppressLint("RestrictedApi")
     override fun setupDialog(dialog: Dialog, style: Int) {
         super.setupDialog(dialog, style)
-        viewBinding = DialogSelectPlayListBinding.inflate(LayoutInflater.from(context))
-        val view = viewBinding.root
+        binding = DialogSelectPlayListBinding.inflate(LayoutInflater.from(context))
+        val view = binding.root
         dialog.setContentView(view)
 
         val displayMetrics = requireActivity().resources.displayMetrics
@@ -84,16 +96,25 @@ class ChoosePlayListDialogFragment : MvpBottomSheetDialogFragment(), ChoosePlayL
         val minHeight = (height * heightPercent).toInt()
         view.minimumHeight = minHeight
 
+        toolbarBackgroundDrawable = ToolbarBackgroundDrawable(
+            attrColor(R.attr.listItemBackground),
+            requireContext().getColorCompat(R.color.translucent_gray)
+        )
+        binding.motionLayout.background = toolbarBackgroundDrawable
+
+        backgroundDrawable = ItemDrawable()
+        backgroundDrawable.setColor(attrColor(R.attr.listItemBackground))
+        (view.parent as View).background = backgroundDrawable
+
         val layoutManager = LinearLayoutManager(context)
-        viewBinding.rvChoosePlayLists.layoutManager = layoutManager
+        binding.rvChoosePlayLists.layoutManager = layoutManager
         adapter = PlayListsAdapter(
-            viewBinding.rvChoosePlayLists,
+            binding.rvChoosePlayLists,
             this::onPlayListSelected,
             this::onPlaylistMenuClicked
         )
-        viewBinding.rvChoosePlayLists.adapter = adapter
-
-        RecyclerViewUtils.attachDynamicShadow(viewBinding.rvChoosePlayLists, viewBinding.titleShadow)
+        binding.rvChoosePlayLists.adapter = adapter
+        binding.rvChoosePlayLists.applyBottomInsets()
 
         val bottomSheetBehavior = ViewUtils.findBottomSheetBehavior(dialog)
         bottomSheetBehavior.peekHeight = minHeight
@@ -104,28 +125,26 @@ class ChoosePlayListDialogFragment : MvpBottomSheetDialogFragment(), ChoosePlayL
         }, presenter::onBottomSheetSlided))
         slideDelegate = buildSlideDelegate()
 
-        viewBinding.ivClose.setOnClickListener { dismiss() }
-        viewBinding.ivClose.visibility = View.INVISIBLE //start state
-        viewBinding.ivCreatePlaylist.setOnClickListener { onCreatePlayListButtonClicked() }
+        binding.ivClose.setOnClickListener { dismiss() }
+        binding.ivClose.visibility = View.INVISIBLE //start state
+        binding.ivCreatePlaylist.setOnClickListener { onCreatePlayListButtonClicked() }
 
-        viewBinding.progressStateView.onTryAgainClick { presenter.onTryAgainButtonClicked() }
+        binding.progressStateView.onTryAgainClick { presenter.onTryAgainButtonClicked() }
 
-        AndroidUtils.setDialogNavigationBarColorAttr(dialog, R.attr.dialogBackground)
-    }
-
-    override fun onDismiss(dialog: DialogInterface) {
-        super.onDismiss(dialog)
-        slideDelegate.onSlide(0f)
+        ViewCompat.setOnApplyWindowInsetsListener(binding.listContainer) { _, windowInsets ->
+            val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
+            insetTop = insets.top
+            windowInsets
+        }
     }
 
     override fun showBottomSheetSlided(slideOffset: Float) {
-        viewBinding.rvChoosePlayLists.post {
+        binding.rvChoosePlayLists.post {
             val contentView = AndroidUtils.getContentView(activity) ?: return@post
 
             var usableSlideOffset = slideOffset
-            val activityHeight =
-                contentView.height - AndroidUtils.getStatusBarHeight(requireContext())
-            val viewHeight = viewBinding.listContainer.height
+            val activityHeight = contentView.height - insetTop
+            val viewHeight = binding.listContainer.height
             if (activityHeight > viewHeight) {
                 usableSlideOffset = 0f
             }
@@ -134,19 +153,19 @@ class ChoosePlayListDialogFragment : MvpBottomSheetDialogFragment(), ChoosePlayL
     }
 
     override fun showEmptyList() {
-        viewBinding.progressStateView.showMessage(R.string.play_lists_on_device_not_found, false)
+        binding.progressStateView.showMessage(R.string.play_lists_on_device_not_found, false)
     }
 
     override fun showList() {
-        viewBinding.progressStateView.hideAll()
+        binding.progressStateView.hideAll()
     }
 
     override fun showLoading() {
-        viewBinding.progressStateView.showProgress()
+        binding.progressStateView.showProgress()
     }
 
     override fun showErrorState(errorCommand: ErrorCommand) {
-        viewBinding.progressStateView.showMessage(errorCommand.message, true)
+        binding.progressStateView.showMessage(errorCommand.message, true)
     }
 
     override fun updateList(list: List<PlayList>) {
@@ -164,19 +183,11 @@ class ChoosePlayListDialogFragment : MvpBottomSheetDialogFragment(), ChoosePlayL
     }
 
     override fun showPlayListDeleteSuccess(playList: PlayList) {
-        MessagesUtils.makeSnackbar(
-            viewBinding.listContainer,
-            getString(R.string.play_list_deleted, playList.name),
-            Snackbar.LENGTH_SHORT
-        ).show()
+        binding.listContainer.showSnackbar(getString(R.string.play_list_deleted, playList.name))
     }
 
     override fun showDeletePlayListError(errorCommand: ErrorCommand) {
-        MessagesUtils.makeSnackbar(
-            viewBinding.listContainer,
-            getString(R.string.play_list_delete_error, errorCommand.message),
-            Snackbar.LENGTH_SHORT
-        ).show()
+        binding.listContainer.showSnackbar(getString(R.string.play_list_delete_error, errorCommand.message))
     }
 
     private fun onPlaylistMenuClicked(playList: PlayList, view: View) {
@@ -218,58 +229,81 @@ class ChoosePlayListDialogFragment : MvpBottomSheetDialogFragment(), ChoosePlayL
     private fun buildSlideDelegate(): SlideDelegate {
         val boundDelegate: SlideDelegate = DelegateManager()
             .addDelegate(
-                BoundValuesDelegate(0.85f, 1f, VisibilityDelegate(viewBinding.ivClose))
+                BoundValuesDelegate(0.85f, 1f, VisibilityDelegate(binding.ivClose))
+            )
+            .addDelegate(
+                BoundValuesDelegate(0.5f, 0.7f, ReverseDelegate(
+                    DelegateManager().apply {
+                        val radius = getDimension(R.dimen.bottom_sheet_corner_size)
+                        addDelegate(ToolbarDrawableTopCornersDelegate(toolbarBackgroundDrawable, radius))
+                        addDelegate(ItemDrawableTopCornersDelegate(backgroundDrawable, radius))
+                    }
+                ))
             )
             .addDelegate(
                 BoundValuesDelegate(
                     0.7f,
                     1f,
                     DelegateManager()
-                        .addDelegate(MotionLayoutDelegate(viewBinding.motionLayout))
-                        .addDelegate(
-                            TextSizeDelegate(
-                                viewBinding.tvTitle,
-                                R.dimen.sheet_dialog_title_collapsed_size,
-                                R.dimen.sheet_dialog_title_expanded_size
-                            )
-                        )
+                        .addDelegate(MotionLayoutDelegate(binding.motionLayout))
                         .addDelegate(
                             TextColorDelegate(
-                                viewBinding.tvTitle,
-                                android.R.attr.textColorSecondary,
-                                android.R.attr.textColorPrimary
+                                binding.tvTitle,
+                                android.R.attr.textColorPrimary,
+                                R.attr.toolbarTextColorPrimary
+                            )
+                        )
+                        .addDelegate(
+                            TintDelegate(
+                                binding.ivClose,
+                                R.attr.buttonColorInverse,
+                                R.attr.toolbarTextColorPrimary
+                            )
+                        )
+                        .addDelegate(
+                            TintDelegate(
+                                binding.ivCreatePlaylist,
+                                R.attr.buttonColorInverse,
+                                R.attr.toolbarTextColorPrimary
+                            )
+                        )
+                        .addDelegate(
+                            ToolbarDrawableColorDelegate(
+                                requireContext(),
+                                toolbarBackgroundDrawable,
+                                R.attr.listItemBackground,
+                                R.attr.colorPrimary
+                            )
+                        )
+                        .addDelegate(
+                            BoundValuesDelegate(
+                                0.8f,
+                                1f,
+                                ElevationDelegate(
+                                    binding.motionLayout,
+                                    0f,
+                                    getDimension(R.dimen.toolbar_elevation)
+                                )
+                            )
+                        )
+                        //O: start expanding toolbar when leftHeight <= toolbarHeight
+                        //   do not allow to stop in transition state
+                        .addDelegate(
+                            InsetPaddingTopDelegate(
+                                binding.motionLayout,
+                                0f,
+                                { insetTop.toFloat() }
+                            )
+                        )
+                        .addDelegate(
+                            ToolbarBackgroundStatusBarDelegate(
+                                toolbarBackgroundDrawable,
+                                { insetTop.toFloat() }
                             )
                         )
                 )
             )
-        return DelegateManager()
-            .addDelegate(BoundValuesDelegate(0.008f, 0.95f, boundDelegate))
-            .addDelegate(
-                BoundValuesDelegate(
-                    0.85f,
-                    1f,
-                    StatusBarColorDelegate(
-                        requireActivity().window,
-                        AndroidUtils.getColorFromAttr(context, getStatusBarColorAttr()),
-                        AndroidUtils.getColorFromAttr(
-                            requireContext(),
-                            R.attr.colorPrimaryDarkSecondary
-                        )
-                    )
-                )
-            )
-    }
-
-    @AttrRes
-    private fun getStatusBarColorAttr(): Int {
-        val args = arguments
-        if (args != null) {
-            val colorAttr = args.getInt(Constants.Arguments.STATUS_BAR_COLOR_ATTR_ARG)
-            if (colorAttr != 0) {
-                return colorAttr
-            }
-        }
-        return android.R.attr.statusBarColor
+        return BoundValuesDelegate(0.008f, 0.95f, boundDelegate)
     }
 
 }

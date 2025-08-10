@@ -1,7 +1,6 @@
 <resources>
 
     <string name="open_drawer">Abrir gaveta</string>
-    <string name="close_drawer">Fechar gaveta</string>
     <string name="try_again">Tente novamente</string>
     <string name="can_not_work_without_file_permission">O aplicativo não pode funcionar sem permissão de arquivo</string>
     <string name="close">Fechar</string>

@@ -5,7 +5,10 @@ import static com.github.anrimian.musicplayer.domain.models.player.AudioFocusEve
 import static com.github.anrimian.musicplayer.domain.models.player.AudioFocusEvent.LOSS_SHORTLY;
 import static com.github.anrimian.musicplayer.domain.models.player.AudioFocusEvent.LOSS_TRANSIENT;
 
+import android.media.AudioAttributes;
+import android.media.AudioFocusRequest;
 import android.media.AudioManager;
+import android.os.Build;
 
 import com.github.anrimian.musicplayer.domain.models.player.AudioFocusEvent;
 
@@ -21,13 +24,29 @@ public class RxAudioFocus {
 
     @Nullable
     public static Observable<AudioFocusEvent> requestAudioFocus(AudioManager audioManager,
+                                                                int usage,
+                                                                int contentType,
                                                                 int streamType,
                                                                 int durationHint) {
         AudioFocusObservable audioFocusObservable = new AudioFocusObservable();
-        //W/AudioManager: Use of stream types is deprecated for operations other than volume control
-        //W/AudioManager: See the documentation of requestAudioFocus() for what to use instead with android.media.AudioAttributes to qualify your playback use case
-        int audioFocusResult = audioManager.requestAudioFocus(audioFocusObservable, streamType,
-                durationHint);
+        int audioFocusResult;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                    .setUsage(usage)
+                    .setContentType(contentType)
+                    .setLegacyStreamType(streamType)
+                    .build();
+            AudioFocusRequest request = new AudioFocusRequest.Builder(durationHint)
+                    .setAudioAttributes(audioAttributes)
+                    .setOnAudioFocusChangeListener(audioFocusObservable)
+                    .build();
+            audioFocusResult = audioManager.requestAudioFocus(request);
+        } else {
+            //W/AudioManager: Use of stream types is deprecated for operations other than volume control
+            //W/AudioManager: See the documentation of requestAudioFocus() for what to use instead with android.media.AudioAttributes to qualify your playback use case
+            audioFocusResult = audioManager.requestAudioFocus(audioFocusObservable, streamType,
+                    durationHint);
+        }
         if (audioFocusResult == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
             return audioFocusObservable.getObservable()
                     .doOnDispose(() -> audioManager.abandonAudioFocus(audioFocusObservable));

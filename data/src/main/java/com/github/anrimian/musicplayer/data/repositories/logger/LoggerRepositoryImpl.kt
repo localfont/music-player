@@ -6,11 +6,9 @@ import com.github.anrimian.musicplayer.domain.repositories.LoggerRepository
 
 class LoggerRepositoryImpl(context: Context) : LoggerRepository {
 
-    private val preferences: SharedPreferencesHelper
-
-    init {
+    private val preferences by lazy {
         val sharedPreferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
-        preferences = SharedPreferencesHelper(sharedPreferences)
+        SharedPreferencesHelper(sharedPreferences)
     }
 
     override fun wasFatalError(): Boolean {

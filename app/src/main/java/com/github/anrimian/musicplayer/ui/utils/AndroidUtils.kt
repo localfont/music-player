@@ -9,6 +9,7 @@ import android.content.ActivityNotFoundException
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.content.res.Resources
 import android.graphics.Color
 import android.net.Uri
@@ -44,9 +45,28 @@ fun Context.getDimensionPixelSize(@DimenRes resId: Int): Int {
     return resources.getDimensionPixelSize(resId)
 }
 
+fun Context.getDimension(@DimenRes resId: Int): Float {
+    return resources.getDimension(resId)
+}
+
 fun Context.colorFromAttr(@AttrRes attr: Int) = AndroidUtils.getColorFromAttr(this, attr)
 
 fun Context.attrColor(@AttrRes attr: Int) = AndroidUtils.getColorFromAttr(this, attr)
+
+fun Context.dimenFromAttr(@AttrRes attr: Int) = AndroidUtils.getDimenFromAttr(this, attr)
+
+fun Context.isTablet(): Boolean {
+    val screenSize = resources.configuration.screenLayout and Configuration.SCREENLAYOUT_SIZE_MASK
+    return screenSize == Configuration.SCREENLAYOUT_SIZE_LARGE || screenSize == Configuration.SCREENLAYOUT_SIZE_XLARGE
+}
+
+fun Context.isTabletLand(): Boolean {
+    return isTablet() && isLandscape()
+}
+
+fun Fragment.isTabletLand(): Boolean {
+    return requireContext().isTabletLand()
+}
 
 val Fragment.args get() = arguments!!
 
@@ -54,6 +74,10 @@ fun Fragment.attrColor(@AttrRes attr: Int) = context!!.attrColor(attr)
 
 fun Fragment.getDimensionPixelSize(@DimenRes resId: Int): Int {
     return resources.getDimensionPixelSize(resId)
+}
+
+fun Fragment.getDimension(@DimenRes resId: Int): Float {
+    return resources.getDimension(resId)
 }
 
 val RecyclerView.ViewHolder.context: Context get() = itemView.context
@@ -69,6 +93,21 @@ fun RecyclerView.ViewHolder.getString(@StringRes id: Int, vararg format: Any): S
 fun RecyclerView.ViewHolder.getColor(@ColorRes id: Int) = ContextCompat.getColor(context, id)
 
 fun RecyclerView.ViewHolder.getInteger(@IntegerRes id: Int) = this.resources.getInteger(id)
+
+fun View.getString(@StringRes id: Int) = context.getString(id)
+
+fun View.getString(@StringRes id: Int, vararg format: Any): String {
+    return context.getString(id, *format)
+}
+
+fun Context.isScreenLarge(): Boolean {
+    val screenSize = resources.configuration.screenLayout and Configuration.SCREENLAYOUT_SIZE_MASK
+    return screenSize == Configuration.SCREENLAYOUT_SIZE_LARGE || screenSize == Configuration.SCREENLAYOUT_SIZE_XLARGE
+}
+
+fun Context.isLandscape(): Boolean {
+    return resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+}
 
 fun startAppSettings(activity: Activity) {
     val intent = Intent()
@@ -118,6 +157,14 @@ inline fun <reified T> Intent.getParcelable(key: String): T? {
         getParcelableExtra(key, T::class.java)
     } else {
         @Suppress("DEPRECATION") getParcelableExtra(key) as? T
+    }
+}
+
+inline fun <reified T> Bundle.getParcelableExtra(key: String): T? {
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        getParcelable(key, T::class.java)
+    } else {
+        @Suppress("DEPRECATION") getParcelable(key) as? T
     }
 }
 

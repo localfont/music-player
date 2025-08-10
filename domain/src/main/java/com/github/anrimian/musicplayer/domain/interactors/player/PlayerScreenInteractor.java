@@ -1,7 +1,8 @@
 package com.github.anrimian.musicplayer.domain.interactors.player;
 
-import com.github.anrimian.filesync.SyncInteractor;
-import com.github.anrimian.filesync.models.state.file.FileSyncState;
+import com.github.anrimian.fsync.SyncInteractor;
+import com.github.anrimian.fsync.models.Optional;
+import com.github.anrimian.fsync.models.state.file.FileSyncState;
 import com.github.anrimian.musicplayer.domain.controllers.SystemMusicController;
 import com.github.anrimian.musicplayer.domain.interactors.sleep_timer.SleepTimerInteractor;
 import com.github.anrimian.musicplayer.domain.models.play_queue.PlayQueueData;
@@ -104,12 +105,12 @@ public class PlayerScreenInteractor {
         return mediaScannerRepository.getFileScannerStateObservable();
     }
 
-    public Observable<FileSyncState> getCurrentCompositionFileSyncState() {
+    public Observable<Optional<FileSyncState>> getCurrentCompositionFileSyncState() {
         return libraryPlayerInteractor.getCurrentQueueItemObservable()
                 .switchMap(queueItem -> {
                     PlayQueueItem item = queueItem.getPlayQueueItem();
                     if (item == null) {
-                        return Observable.just(FileSyncState.NotActive.INSTANCE);
+                        return Observable.just(new Optional<>());
                     }
                     return syncInteractor.getFileSyncStateObservable(item.getId());
                 });

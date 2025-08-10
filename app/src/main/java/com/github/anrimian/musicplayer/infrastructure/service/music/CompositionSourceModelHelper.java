@@ -6,7 +6,6 @@ import static com.github.anrimian.musicplayer.ui.common.format.FormatUtils.forma
 
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.media.MediaMetadata;
 import android.os.Build;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaSessionCompat;
@@ -48,9 +47,7 @@ public class CompositionSourceModelHelper {
         boolean useAlbumArt = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
                 && setting.isShowCovers()) || setting.isCoversOnLockScreen();
         if (!useAlbumArt || source == null) {
-            metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_ART_URI, null);
-            metadataBuilder.putBitmap(MediaMetadata.METADATA_KEY_ART, null);
-            mediaSession.setMetadata(metadataBuilder.build());
+            mediaSession.setMetadata(null);
             return;
         }
 
@@ -88,13 +85,37 @@ public class CompositionSourceModelHelper {
             }
         }
         if (source instanceof ExternalCompositionSource) {
+            ExternalCompositionSource composition = (ExternalCompositionSource) source;
             Components.getAppComponent()
                     .imageLoader()
-                    .loadImage((ExternalCompositionSource) source, bitmap -> {
-                        metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_ART_URI, null);
-                        putBitmapToMetadata(metadataBuilder, bitmap);
+                    .loadImageUri(composition, uri -> {
+                        String uriStr = null;
+                        if (uri != null) {
+                            uriStr = uri.toString();
+                        }
+                        metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_ART_URI, uriStr);
                         mediaSession.setMetadata(metadataBuilder.build());
                     });
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                Components.getAppComponent()
+                        .imageLoader()
+                        .loadMediaSessionImage(composition, bitmap -> {
+                            putBitmapToMetadata(metadataBuilder, bitmap);
+                            mediaSession.setMetadata(metadataBuilder.build());
+                        });
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                metadataBuilder.putBitmap(MediaMetadataCompat.METADATA_KEY_ART, null);
+                mediaSession.setMetadata(metadataBuilder.build());
+            } else {
+                //uri doesn't work for lock screen background, so put it here
+                Components.getAppComponent()
+                        .imageLoader()
+                        .loadImage((ExternalCompositionSource) source, bitmap -> {
+                            putBitmapToMetadata(metadataBuilder, bitmap);
+                            mediaSession.setMetadata(metadataBuilder.build());
+                        });
+            }
         }
     }
 
@@ -123,12 +144,7 @@ public class CompositionSourceModelHelper {
             mediaSession.setMetadata(builder.build());
             return;
         }
-        MediaMetadataCompat.Builder builder = metadataBuilder
-                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, null)
-                .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, null)
-                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, null)
-                .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, 0);
-        mediaSession.setMetadata(builder.build());
+        mediaSession.setMetadata(null);
     }
 
     private static void putBitmapToMetadata(MediaMetadataCompat. Builder metadataBuilder,

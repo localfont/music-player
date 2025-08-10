@@ -1,206 +1,152 @@
-package com.github.anrimian.musicplayer.ui.common.menu;
+package com.github.anrimian.musicplayer.ui.common.menu
 
-import static android.view.View.MeasureSpec.makeMeasureSpec;
-import static android.view.ViewGroup.LayoutParams.WRAP_CONTENT;
-
-import android.annotation.SuppressLint;
-import android.content.Context;
-import android.view.Gravity;
-import android.view.View;
-import android.view.View.MeasureSpec;
-import android.widget.FrameLayout;
-import android.widget.PopupWindow;
-
-import androidx.annotation.NonNull;
-import androidx.appcompat.content.res.AppCompatResources;
-
-import com.github.anrimian.musicplayer.R;
-import com.github.anrimian.musicplayer.ui.utils.ViewUtils;
-
-import javax.annotation.Nullable;
+import android.annotation.SuppressLint
+import android.view.Gravity
+import android.view.View
+import android.view.View.MeasureSpec
+import android.view.View.OnAttachStateChangeListener
+import android.view.ViewGroup
+import android.widget.FrameLayout
+import android.widget.PopupWindow
+import com.github.anrimian.musicplayer.R
+import com.github.anrimian.musicplayer.ui.utils.ViewUtils
+import com.github.anrimian.musicplayer.ui.utils.getDrawableCompat
 
 @SuppressLint("RtlHardcoded")
-public class AppPopupWindow {
+object AppPopupWindow {
 
-    private static final long POPUP_OPEN_WINDOW_MILLIS = 200L;
-    private static long lastOpenTime;
-
-    @Nullable
-    public static PopupWindow showPopupWindow(View anchorView,
-                                              View popupView,
-                                              int anchorGravity,
-                                              int screenMargin) {
-        return showPopupWindow(anchorView, popupView, anchorGravity, Gravity.NO_GRAVITY, screenMargin);
-    }
+    private const val POPUP_OPEN_WINDOW_MILLIS = 200L
+    private var lastOpenTime: Long = 0
 
     /**
-        @param anchorGravity values: TOP, BOTTOM, START, END, CENTER
-        @param gravity values: NO_GRAVITY, TOP, BOTTOM, CENTER_VERTICAL, START, END,
-        CENTER_HORIZONTAL
+     * @param anchorGravity values: TOP, BOTTOM, START, END, CENTER
+     * @param gravity values: NO_GRAVITY, TOP, BOTTOM, CENTER_VERTICAL, START, END,
+     * CENTER_HORIZONTAL
      */
-    @Nullable
-    public static PopupWindow showPopupWindow(View anchorView,
-                                              View popupView,
-                                              int anchorGravity,
-                                              int gravity,
-                                              int screenMargin) {
-        long currentTime = System.currentTimeMillis();
+    fun showPopupWindow(
+        anchorView: View,
+        popupView: View,
+        screenMargin: Int,
+        anchorGravity: Int,
+        gravity: Int = Gravity.NO_GRAVITY
+    ): PopupWindow? {
+        val currentTime = System.currentTimeMillis()
         if (lastOpenTime + POPUP_OPEN_WINDOW_MILLIS > currentTime) {
-            return null;
+            return null
         }
-        lastOpenTime = currentTime;
+        lastOpenTime = currentTime
 
-        Context context = anchorView.getContext();
-
+        val context = anchorView.context
 
         //margins
-        FrameLayout popupViewWrapper = new FrameLayout(context);
-        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT);
-        params.setMargins(screenMargin, screenMargin, screenMargin, screenMargin);
-        popupViewWrapper.addView(popupView, params);
+        val popupViewWrapper = FrameLayout(context)
+        val params = FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        params.setMargins(screenMargin, screenMargin, screenMargin, screenMargin)
+        popupViewWrapper.addView(popupView, params)
 
-        popupView.setElevation(5f);
+        popupView.elevation = 5f
 
-        PopupWindow popupWindow = new PopupWindow(popupViewWrapper,
-                WRAP_CONTENT,
-                WRAP_CONTENT,
-                true);
+        val popupWindow = PopupWindow(
+            popupViewWrapper,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            true
+        )
 
-        popupWindow.setAnimationStyle(R.style.PopupAnimationStyle);
+        popupWindow.animationStyle = R.style.PopupAnimationStyle
         //fix for closing by back button or touch on android 5.1
-        popupWindow.setBackgroundDrawable(AppCompatResources.getDrawable(context, R.drawable.bg_transparent));
+        popupWindow.setBackgroundDrawable(context.getDrawableCompat(R.drawable.bg_transparent))
         //fix for closing by touch on android 12
-        popupWindow.setOutsideTouchable(true);
+        popupWindow.isOutsideTouchable = true
 
         popupView.measure(
-                makeMeasureSpec(0, MeasureSpec.UNSPECIFIED),
-                makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
-        );
+            MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED),
+            MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
+        )
 
 
-        int[] location = new int[2];
-        anchorView.getLocationInWindow(location);
-        int anchorX = location[0];
-        int anchorY = location[1];
+        val location = IntArray(2)
+        anchorView.getLocationInWindow(location)
+        val anchorX = location[0]
+        val anchorY = location[1]
 
-        int anchorWidth = anchorView.getMeasuredWidth();
-        int anchorHeight = anchorView.getMeasuredHeight();
+        val anchorWidth = anchorView.measuredWidth
+        val anchorHeight = anchorView.measuredHeight
 
-        int viewWidth = popupView.getMeasuredWidth();
-        int viewHeight = popupView.getMeasuredHeight();
+        val viewWidth = popupView.measuredWidth
+        val viewHeight = popupView.measuredHeight
 
-        int showX = anchorX;
-        int showY = anchorY;
+        var showX = anchorX
+        var showY = anchorY
 
-        anchorGravity = normalizeGravity(anchorView, anchorGravity);
-        gravity = normalizeGravity(anchorView, gravity);
-        switch (anchorGravity) {
-            case Gravity.TOP: {
-                showY -= viewHeight - screenMargin;
-                break;
-            }
-            case Gravity.BOTTOM: {
-                showY += anchorHeight - screenMargin;
-                break;
-            }
-            case Gravity.LEFT: {
-                showX = showX - screenMargin - viewWidth;
-                break;
-            }
-            case Gravity.RIGHT: {
-                showX += anchorWidth;
-                break;
-            }
-            case Gravity.CENTER: {
-                showX = showX + anchorWidth - viewWidth;
-            }
+        val anchorGravityNormalized = normalizeGravity(anchorView, anchorGravity)
+        val gravityNormalized = normalizeGravity(anchorView, gravity)
+        when (anchorGravityNormalized) {
+            Gravity.TOP -> showY -= viewHeight - screenMargin
+            Gravity.BOTTOM -> showY += anchorHeight - screenMargin
+            Gravity.LEFT -> showX = showX - screenMargin - viewWidth
+            Gravity.RIGHT -> showX += anchorWidth
+            Gravity.CENTER -> showX = showX + anchorWidth - viewWidth
         }
-        switch (gravity) {
-            case Gravity.NO_GRAVITY: {
-                switch (anchorGravity) {
-                    case Gravity.LEFT:
-                    case Gravity.RIGHT: {
-                        showY -= screenMargin;
-                        break;
-                    }
-                    case Gravity.TOP:
-                    case Gravity.BOTTOM: {
-                        showX -= screenMargin;
-                        break;
-                    }
-                    case Gravity.CENTER: {
-                        showY -= screenMargin;
-                        showX -= screenMargin;
+        when (gravityNormalized) {
+            Gravity.NO_GRAVITY -> {
+                when (anchorGravityNormalized) {
+                    Gravity.LEFT, Gravity.RIGHT -> showY -= screenMargin
+                    Gravity.TOP, Gravity.BOTTOM -> showX -= screenMargin
+                    Gravity.CENTER -> {
+                        showY -= screenMargin
+                        showX -= screenMargin
                     }
                 }
-
-                break;
             }
-            case Gravity.TOP: {
-                showY = showY + anchorHeight - viewHeight - screenMargin;
-                break;
+            Gravity.TOP -> showY = showY + anchorHeight - viewHeight - screenMargin
+            Gravity.BOTTOM -> showY += anchorHeight
+            Gravity.CENTER_VERTICAL -> {
+                showY = showY + anchorHeight / 2 - viewHeight / 2 - screenMargin
             }
-            case Gravity.BOTTOM: {
-                showY += anchorHeight;
-                break;
-            }
-            case Gravity.CENTER_VERTICAL: {
-                showY = showY + anchorHeight/2 - viewHeight/2  - screenMargin;
-                break;
-            }
-            case Gravity.LEFT: {
-                showX -= viewWidth;
-                break;
-            }
-            case Gravity.RIGHT: {
-                showX += viewWidth;
-                break;
-            }
-            case Gravity.CENTER_HORIZONTAL: {
-                showX = showX + anchorWidth/2 - viewWidth/2;
-            }
+            Gravity.LEFT -> showX -= viewWidth
+            Gravity.RIGHT -> showX += viewWidth
+            Gravity.CENTER_HORIZONTAL -> showX = showX + anchorWidth / 2 - viewWidth / 2
         }
 
-        View.OnAttachStateChangeListener listener = new View.OnAttachStateChangeListener() {
-            @Override
-            public void onViewAttachedToWindow(@NonNull View view) {}
+        val listener = object : OnAttachStateChangeListener {
+            override fun onViewAttachedToWindow(view: View) {}
 
-            @Override
-            public void onViewDetachedFromWindow(@NonNull View view) {
-                popupWindow.dismiss();
+            override fun onViewDetachedFromWindow(view: View) {
+                popupWindow.dismiss()
             }
-        };
-        anchorView.addOnAttachStateChangeListener(listener);
-        popupWindow.setOnDismissListener(() ->
-                anchorView.removeOnAttachStateChangeListener(listener)
-        );
+        }
+        anchorView.addOnAttachStateChangeListener(listener)
+        popupWindow.setOnDismissListener { anchorView.removeOnAttachStateChangeListener(listener) }
 
         try {
-            popupWindow.showAtLocation(anchorView, Gravity.NO_GRAVITY, showX, showY);
-        } catch (IllegalStateException ignored) {
-            return null;
+            popupWindow.showAtLocation(anchorView, Gravity.NO_GRAVITY, showX, showY)
+        } catch (ignored: IllegalStateException) {
+            return null
         }
 
-        return popupWindow;
+        return popupWindow
     }
 
-    private static int normalizeGravity(View view, int gravity) {
-        boolean isRtl = ViewUtils.isRtl(view);
+    private fun normalizeGravity(view: View, gravity: Int): Int {
+        val isRtl = ViewUtils.isRtl(view)
         if (gravity == Gravity.START) {
-            if (isRtl) {
-                return Gravity.RIGHT;
+            return if (isRtl) {
+                Gravity.RIGHT
             } else {
-                return Gravity.LEFT;
+                Gravity.LEFT
             }
         }
         if (gravity == Gravity.END) {
-            if (isRtl) {
-                return Gravity.LEFT;
+            return if (isRtl) {
+                Gravity.LEFT
             } else {
-                return Gravity.RIGHT;
+                Gravity.RIGHT
             }
         }
-        return gravity;
+        return gravity
     }
-
 }

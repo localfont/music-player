@@ -1,11 +1,15 @@
 package com.github.anrimian.musicplayer.data.controllers.music.players
 
+import android.content.Context
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.os.Build
 import com.github.anrimian.musicplayer.data.controllers.music.equalizer.EqualizerController
 import com.github.anrimian.musicplayer.data.controllers.music.players.utils.MediaPlayerDataSourceBuilder
+import com.github.anrimian.musicplayer.data.models.composition.source.UriContentSource
+import com.github.anrimian.musicplayer.data.utils.hasPersistedReadPermission
 import com.github.anrimian.musicplayer.domain.models.composition.content.CompositionContentSource
+import com.github.anrimian.musicplayer.domain.models.composition.content.NoReadPermissionException
 import com.github.anrimian.musicplayer.domain.models.composition.content.RelaunchSourceException
 import com.github.anrimian.musicplayer.domain.models.composition.content.UnknownPlayerException
 import com.github.anrimian.musicplayer.domain.models.composition.content.UnsupportedSourceException
@@ -20,7 +24,8 @@ import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 class AndroidMediaPlayer(
-    private val uiScheduler: Scheduler,
+    private val context: Context,
+    private val ioScheduler: Scheduler,
     private val equalizerController: EqualizerController,
     private val sourceBuilder: MediaPlayerDataSourceBuilder,
 ) : AppMediaPlayer {
@@ -38,10 +43,6 @@ class AndroidMediaPlayer(
             playerEventsSubject.onNext(MediaPlayerEvent.Error(ex))
             false
         }
-
-//        try {
-//            equalizerController.attachEqualizer(mediaPlayer.getAudioSessionId());
-//        } catch (IllegalStateException ignored) {}
     }
 
     private var currentSource: CompositionContentSource? = null
@@ -50,6 +51,7 @@ class AndroidMediaPlayer(
     private var isPlaying = false
 
     private var previousException: Exception? = null
+    private var postponedPosition: Long? = null
 
     private var volume = 1f
     private var leftVolume = 1f
@@ -60,12 +62,16 @@ class AndroidMediaPlayer(
         previousException: Exception?,
     ): Completable {
         currentSource = source
+        postponedPosition = null
         this.previousException = previousException
-        return Completable.fromAction { prepareMediaSource(source) }
+        return prepareMediaSource(source)
             .doOnSubscribe { isSourcePrepared = false }
-            .doOnComplete { isSourcePrepared = true }
-            .onErrorResumeNext { t -> Completable.error(mapPrepareException(t)) }
-            .subscribeOn(uiScheduler)
+            .doOnComplete {
+                isSourcePrepared = true
+                postponedPosition?.let(this::seekTo)
+            }
+            .onErrorResumeNext { t -> Completable.error(mapPrepareException(t, source)) }
+            .subscribeOn(ioScheduler)
     }
 
     override fun stop() {
@@ -101,15 +107,19 @@ class AndroidMediaPlayer(
     override fun seekTo(position: Long) {
         try {
             if (isSourcePrepared) {
-                mediaPlayer.seekTo(position.toInt())
+                synchronized(mediaPlayer) {
+                    mediaPlayer.seekTo(position.toInt())
+                }
             } else if (currentSource != null) {
-                prepareMediaSource(currentSource!!)
-                isSourcePrepared = true
-                pause()
-                resume()
+                postponedPosition = position
             }
         } catch (ex: Exception) {
-            playerEventsSubject.onNext(MediaPlayerEvent.Error(RelaunchSourceException(ex)))
+            val exception = if (ex is SecurityException) {
+                ex
+            } else {
+                RelaunchSourceException(ex)
+            }
+            playerEventsSubject.onNext(MediaPlayerEvent.Error(exception))
         }
     }
 
@@ -120,7 +130,7 @@ class AndroidMediaPlayer(
 
     override fun getTrackPositionObservable(): Observable<Long> {
         return Observable.interval(0, 1, TimeUnit.SECONDS)
-            .observeOn(uiScheduler)
+            .observeOn(ioScheduler)
             .flatMapSingle { getTrackPosition() }
     }
 
@@ -130,7 +140,9 @@ class AndroidMediaPlayer(
                 return@fromCallable 0L
             }
             try {
-                return@fromCallable mediaPlayer.currentPosition.toLong()
+                synchronized(mediaPlayer) {
+                    return@fromCallable mediaPlayer.currentPosition.toLong()
+                }
             } catch (e: IllegalStateException) {
                 return@fromCallable 0L
             }
@@ -143,7 +155,9 @@ class AndroidMediaPlayer(
                 return@fromCallable 0L
             }
             try {
-                return@fromCallable mediaPlayer.duration.toLong()
+                synchronized(mediaPlayer) {
+                    return@fromCallable mediaPlayer.duration.toLong()
+                }
             } catch (e: IllegalStateException) {
                 return@fromCallable 0L
             }
@@ -153,10 +167,12 @@ class AndroidMediaPlayer(
     override fun setPlaybackSpeed(speed: Float) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             try {
-                val isPlaying = mediaPlayer.isPlaying
-                mediaPlayer.playbackParams = mediaPlayer.playbackParams.setSpeed(speed)
-                if (!isPlaying) {
-                    mediaPlayer.pause()
+                synchronized(mediaPlayer) {
+                    val isPlaying = mediaPlayer.isPlaying
+                    mediaPlayer.playbackParams = mediaPlayer.playbackParams.setSpeed(speed)
+                    if (!isPlaying) {
+                        mediaPlayer.pause()
+                    }
                 }
             } catch (ignored: IllegalStateException) {
             } //IllegalArgumentException - handle unsupported case
@@ -164,10 +180,12 @@ class AndroidMediaPlayer(
     }
 
     override fun release() {
-        isSourcePrepared = false
-        currentSource = null
-        equalizerController.detachEqualizer()
-        mediaPlayer.release()
+        synchronized(mediaPlayer) {
+            isSourcePrepared = false
+            currentSource = null
+            equalizerController.detachEqualizer()
+            mediaPlayer.release()
+        }
     }
 
     override fun getPlayerEventsObservable(): Observable<MediaPlayerEvent> {
@@ -188,7 +206,9 @@ class AndroidMediaPlayer(
         val leftOutput = volume * leftVolume
         val rightOutput = volume * rightVolume
         try {
-            mediaPlayer.setVolume(leftOutput, rightOutput)
+            synchronized(mediaPlayer) {
+                mediaPlayer.setVolume(leftOutput, rightOutput)
+            }
         } catch (ignored: IllegalStateException) {}
     }
 
@@ -204,44 +224,74 @@ class AndroidMediaPlayer(
         }
     }
 
-    private fun mapPrepareException(throwable: Throwable): Throwable {
-        if (throwable is IOException && previousException is UnsupportedSourceException) {
-            previousException = null
-            return UnsupportedSourceException()
+    private fun mapPrepareException(throwable: Throwable, source: CompositionContentSource): Throwable {
+        if (throwable is IOException) {
+            if (source is UriContentSource && !source.uri.hasPersistedReadPermission(context)) {
+                return NoReadPermissionException(throwable)
+            }
+            if (previousException is UnsupportedSourceException) {
+                previousException = null
+                return UnsupportedSourceException()
+            }
         }
+
         return throwable
     }
 
-    private fun prepareMediaSource(source: CompositionContentSource) {
-        mediaPlayer.reset()
-        mediaPlayer.setAudioAttributes(
-            AudioAttributes.Builder()
-                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                .build()
-        )
-        sourceBuilder.setMediaSource(mediaPlayer, source)
-        mediaPlayer.prepare()
+    private fun prepareMediaSource(source: CompositionContentSource): Completable {
+        return Completable.create { emitter ->
+            synchronized(mediaPlayer) {
+                try {
+                    mediaPlayer.reset()
+                    mediaPlayer.setAudioAttributes(
+                        AudioAttributes.Builder()
+                            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                            .build()
+                    )
+                    sourceBuilder.setMediaSource(mediaPlayer, source)
+
+                    mediaPlayer.setOnPreparedListener {
+                        if (!emitter.isDisposed) {
+                            emitter.onComplete()
+                        }
+                    }
+                    mediaPlayer.setOnErrorListener { _, what, extra ->
+                        isSourcePrepared = false
+                        val ex = createExceptionFromPlayerError(what, extra)
+                        if (!emitter.isDisposed) {
+                            emitter.tryOnError(ex)
+                        }
+                        true // return true to ignore error
+                    }
+                    mediaPlayer.prepareAsync()
+                } catch (t: Throwable) {
+                    if (!emitter.isDisposed) {
+                        emitter.tryOnError(t)
+                    }
+                }
+            }
+        }
     }
 
     private fun pausePlayer() {
         try {
-            if (mediaPlayer.isPlaying) {
-                mediaPlayer.pause()
-                equalizerController.detachEqualizer()
+            synchronized(mediaPlayer) {
+                if (mediaPlayer.isPlaying) {
+                    mediaPlayer.pause()
+                    equalizerController.detachEqualizer()
+                }
             }
         } catch (ignored: Exception) {}
     }
 
     private fun start() {
-        start(mediaPlayer)
-        isPlaying = true
-    }
-
-    private fun start(mediaPlayer: MediaPlayer) {
-        try {
-            mediaPlayer.start()
-            equalizerController.attachEqualizer(mediaPlayer.audioSessionId)
-        } catch (ignored: IllegalStateException) {}
+        synchronized(mediaPlayer) {
+            try {
+                mediaPlayer.start()
+                equalizerController.attachEqualizer(mediaPlayer.audioSessionId)
+            } catch (ignored: IllegalStateException) {}
+            isPlaying = true
+        }
     }
 
 }

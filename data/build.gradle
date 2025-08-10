@@ -1,7 +1,9 @@
-apply plugin: 'com.android.library'
-apply plugin: 'kotlin-android'
-apply plugin: 'kotlin-kapt'
-apply plugin: "de.mannodermaus.android-junit5"
+plugins {
+    id 'com.android.library'
+    alias(libs.plugins.kotlinAndroid)
+    id 'kotlin-kapt'
+    alias(libs.plugins.androidJunit5)
+}
 
 android {
     namespace 'com.github.anrimian.musicplayer.data'
@@ -54,35 +56,33 @@ android {
 dependencies {
     implementation project(':domain')
 
-    implementation kotlinStdLib
+    implementation libs.kotlinStdLib
 
-    implementation appCompat
-    implementation documentFile
-    implementation rxJava
-    implementation exoPlayerCore
+    implementation libs.appCompat
+    implementation libs.documentFile
+    implementation libs.rxJava
+    implementation libs.coroutinesCore
+    implementation libs.exoPlayerCore
 
-    compileOnly javaxAnnotation
-    compileOnly javaxGeneratedAnnotation
+    compileOnly libs.javaxAnnotation
 
-    implementation room
-    implementation roomRx
-    kapt roomCompiler
+    implementation libs.room
+    implementation libs.roomRx
+    kapt libs.roomCompiler
 
-    implementation jAudioTagger
+    implementation libs.libjAudioTagger
 
-    testImplementation junit5
-    testImplementation junit5Params
-    testRuntimeOnly junit5Engine
-    testImplementation mockito
-    testImplementation mockitoKt
+    testImplementation libs.junit5
+    testImplementation libs.junit5Params
+    testRuntimeOnly libs.junit5Engine
+    testImplementation libs.mockito
+    testImplementation libs.mockitoKt
 
-    androidTestImplementation androidXTestRunner
-    androidTestImplementation junit5
-    androidTestImplementation junit5PluginCore
-    androidTestRuntimeOnly junit5PluginRunner
-    androidTestImplementation espresso
-    androidTestImplementation androidXTestRules
-    androidTestImplementation rxJavaExt
-    androidTestImplementation roomTest
+    androidTestImplementation libs.androidXTestRunner
+    androidTestImplementation libs.junit5
+    androidTestImplementation libs.espresso
+    androidTestImplementation libs.androidXTestRules
+    androidTestImplementation libs.rxJavaExt
+    androidTestImplementation libs.roomTest
 
 }

@@ -50,8 +50,7 @@ class WidgetMenuActivity: BaseMvpAppCompatActivity(), WidgetMenuView {
             PartialWidgetMenuHeaderBinding.inflate(inflater, root, false)
         }
         val menu = AndroidUtils.createMenu(this, R.menu.widget_menu)
-        val menuAdapter = MenuAdapter(menu, R.layout.item_popup_menu)
-        menuAdapter.setOnItemClickListener(this::onMenuItemClicked)
+        val menuAdapter = MenuAdapter(menu, R.layout.item_popup_menu, this::onMenuItemClicked)
         viewBinding.recyclerView.adapter = ConcatAdapter(headerItem, menuAdapter)
 
         deletingErrorHandler = DeleteErrorHandler(

@@ -19,7 +19,7 @@ class LocaleControllerImpl(private val context: Context): LocaleController {
             return baseContext
         }
 
-        val locale = Locale(getCurrentLocaleCode())
+        val locale = Locale.forLanguageTag(languageCode)
         Locale.setDefault(locale)
 
         val resources = baseContext.resources

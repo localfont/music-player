@@ -20,7 +20,7 @@ import com.github.anrimian.musicplayer.domain.models.play_queue.PlayQueueEvent
 import com.github.anrimian.musicplayer.domain.models.playlist.PlayList
 import com.github.anrimian.musicplayer.domain.models.playlist.PlayListItem
 import com.github.anrimian.musicplayer.domain.models.utils.CompositionHelper.formatCompositionName
-import com.github.anrimian.musicplayer.domain.utils.functions.Optional
+import com.github.anrimian.musicplayer.domain.utils.functions.Opt
 import com.github.anrimian.musicplayer.ui.common.format.FormatUtils.formatAlbumAdditionalInfoForMediaBrowser
 import com.github.anrimian.musicplayer.ui.common.format.FormatUtils.formatCompositionAdditionalInfoForMediaBrowser
 import com.github.anrimian.musicplayer.ui.common.format.FormatUtils.formatCompositionAuthor
@@ -61,7 +61,7 @@ class AppMediaBrowserService: MediaBrowserServiceCompat() {
     override fun onCreate() {
         super.onCreate()
         Components.checkInitialization(applicationContext)
-        val mediaSessionHandler = Components.getAppComponent().mediaSessionHandler()
+        val mediaSessionHandler = getAppComponent().mediaSessionHandler()
         mediaSessionHandler.dispatchServiceCreated()
         this.sessionToken = mediaSessionHandler.getMediaSession().sessionToken
     }
@@ -113,7 +113,7 @@ class AppMediaBrowserService: MediaBrowserServiceCompat() {
 
         resultCallback.detach()
 
-        currentRequestDisposable = Components.getAppComponent()
+        currentRequestDisposable = getAppComponent()
             .musicServiceInteractor()
             .getCompositionsObservable(query)
             .firstOrError()
@@ -129,12 +129,12 @@ class AppMediaBrowserService: MediaBrowserServiceCompat() {
         super.onDestroy()
         currentRequestDisposable?.dispose()
         itemUpdateDisposableMap.forEach { entry -> entry.value.dispose() }
-        Components.getAppComponent().mediaSessionHandler().dispatchServiceDestroyed()
+        getAppComponent().mediaSessionHandler().dispatchServiceDestroyed()
     }
 
     private fun loadRecentItem(resultCallback: Result<List<MediaBrowserCompat.MediaItem>>) {
         resultCallback.detach()
-        currentRequestDisposable = Components.getAppComponent()
+        currentRequestDisposable = getAppComponent()
             .libraryPlayerInteractor()
             .getCurrentQueueItemObservable()
             .firstOrError()
@@ -148,7 +148,7 @@ class AppMediaBrowserService: MediaBrowserServiceCompat() {
         loadItems(
             COMPOSITIONS_NODE_ID,
             resultCallback,
-            Components.getAppComponent().musicServiceInteractor().getCompositionsObservable(null)
+            getAppComponent().musicServiceInteractor().getCompositionsObservable(null)
         ) { compositions -> compositions.mapIndexed(this::toActionItem) }
     }
 
@@ -160,7 +160,7 @@ class AppMediaBrowserService: MediaBrowserServiceCompat() {
         loadItems(
             folderNodeId,
             resultCallback,
-            Components.getAppComponent().musicServiceInteractor().getFoldersObservable(parentFolderId)
+            getAppComponent().musicServiceInteractor().getFoldersObservable(parentFolderId)
         ) { sources -> sources.map { source -> toActionItem(source, parentFolderId) } }
     }
 
@@ -168,7 +168,7 @@ class AppMediaBrowserService: MediaBrowserServiceCompat() {
         loadItems(
             ARTISTS_NODE_ID,
             resultCallback,
-            Components.getAppComponent().musicServiceInteractor().artistsObservable
+            getAppComponent().musicServiceInteractor().artistsObservable
         ) { sources -> sources.map(this::toBrowsableItem) }
     }
 
@@ -180,7 +180,7 @@ class AppMediaBrowserService: MediaBrowserServiceCompat() {
         loadItems(
             nodeId,
             resultCallback,
-            Components.getAppComponent().musicServiceInteractor().getCompositionsByArtist(artistId)
+            getAppComponent().musicServiceInteractor().getCompositionsByArtist(artistId)
         ) { sources -> sources.mapIndexed { position, composition ->
             toActionArtistItem(position, composition, artistId)
         }
@@ -191,7 +191,7 @@ class AppMediaBrowserService: MediaBrowserServiceCompat() {
         loadItems(
             ALBUMS_NODE_ID,
             resultCallback,
-            Components.getAppComponent().musicServiceInteractor().albumsObservable
+            getAppComponent().musicServiceInteractor().albumsObservable
         ) { sources -> sources.map(this::toBrowsableItem) }
     }
 
@@ -199,7 +199,7 @@ class AppMediaBrowserService: MediaBrowserServiceCompat() {
         loadItems(
             GENRES_NODE_ID,
             resultCallback,
-            Components.getAppComponent().musicServiceInteractor().genresObservable
+            getAppComponent().musicServiceInteractor().genresObservable
         ) { sources -> sources.map(this::toBrowsableItem) }
     }
 
@@ -211,7 +211,7 @@ class AppMediaBrowserService: MediaBrowserServiceCompat() {
         loadItems(
             nodeId,
             resultCallback,
-            Components.getAppComponent().musicServiceInteractor().getAlbumItemsObservable(albumId)
+            getAppComponent().musicServiceInteractor().getAlbumItemsObservable(albumId)
         ) { sources -> sources.mapIndexed { position, composition ->
             toActionAlbumItem(position, composition, albumId)
         }
@@ -226,7 +226,7 @@ class AppMediaBrowserService: MediaBrowserServiceCompat() {
         loadItems(
             nodeId,
             resultCallback,
-            Components.getAppComponent().musicServiceInteractor().getGenreItemsObservable(genreId)
+            getAppComponent().musicServiceInteractor().getGenreItemsObservable(genreId)
         ) { sources -> sources.mapIndexed { position, composition ->
             toActionGenreItem(position, composition, genreId)
         }
@@ -237,7 +237,7 @@ class AppMediaBrowserService: MediaBrowserServiceCompat() {
         loadItems(
             PLAYLISTS_NODE_ID,
             resultCallback,
-            Components.getAppComponent().musicServiceInteractor().playListsObservable
+            getAppComponent().musicServiceInteractor().playListsObservable
         ) { sources -> sources.map(this::toBrowsableItem) }
     }
 
@@ -249,7 +249,7 @@ class AppMediaBrowserService: MediaBrowserServiceCompat() {
         loadItems(
             nodeId,
             resultCallback,
-            Components.getAppComponent().musicServiceInteractor().getPlaylistItemsObservable(playlistId)
+            getAppComponent().musicServiceInteractor().getPlaylistItemsObservable(playlistId)
         ) { sources -> sources.mapIndexed { position, composition ->
             toActionPlaylistItem(position, composition, playlistId)
         }
@@ -257,7 +257,7 @@ class AppMediaBrowserService: MediaBrowserServiceCompat() {
     }
 
     private fun loadRootItems(resultCallback: Result<List<MediaBrowserCompat.MediaItem>>) {
-        val libraryPlayerInteractor = Components.getAppComponent().libraryPlayerInteractor()
+        val libraryPlayerInteractor = getAppComponent().libraryPlayerInteractor()
         val observable = Observable.combineLatest(
             libraryPlayerInteractor.getPlayQueueSizeObservable(),
             libraryPlayerInteractor.getIsPlayingStateObservable(),
@@ -332,17 +332,17 @@ class AppMediaBrowserService: MediaBrowserServiceCompat() {
     }
 
     private fun processBrowsableItemUpdateError(throwable: Throwable): Any {
-        Components.getAppComponent().analytics().processNonFatalError(throwable)
+        getAppComponent().analytics().processNonFatalError(throwable)
         return TRIGGER
     }
 
     private fun <T> processRecentItemError(throwable: Throwable): List<T> {
-        Components.getAppComponent().analytics().processNonFatalError(throwable)
+        getAppComponent().analytics().processNonFatalError(throwable)
         return emptyList()
     }
 
     private fun Result<List<MediaBrowserCompat.MediaItem>>.sendErrorResult(throwable: Throwable) {
-        val errorParser = Components.getAppComponent().errorParser()
+        val errorParser = getAppComponent().errorParser()
         errorParser.logError(throwable)
         val errorCommand = errorParser.parseError(throwable)
         sendErrorResult(DEFAULT_ERROR_ACTION_ID, errorCommand.message)
@@ -365,12 +365,12 @@ class AppMediaBrowserService: MediaBrowserServiceCompat() {
     private fun toRecentItem(playQueueEvent: PlayQueueEvent): Single<List<MediaBrowserCompat.MediaItem>> {
         val queueItem = playQueueEvent.playQueueItem ?: return Single.just(emptyList())
 
-        val appComponent = Components.getAppComponent()
+        val appComponent = getAppComponent()
         val coverUriSingle =
             if (appComponent.musicServiceInteractor().isCoversInNotificationEnabled) {
                 appComponent.imageLoader().loadImageUri(queueItem)
             } else {
-                Single.just(Optional(null))
+                Single.just(Opt(null))
             }
 
         return coverUriSingle.map { coverUriOpt ->
@@ -537,6 +537,8 @@ class AppMediaBrowserService: MediaBrowserServiceCompat() {
             .build(),
         MediaBrowserCompat.MediaItem.FLAG_BROWSABLE
     )
+
+    private fun getAppComponent() = Components.getAppComponent()
 
     companion object {
         const val PERMISSION_ERROR_ACTION_ID = "permission_error_action_id"

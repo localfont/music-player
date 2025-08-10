@@ -1,6 +1,6 @@
 # Simple Music Player
 
-Another music player project for android, in accordance with author's vision of how a music player should look like.
+Music player for android, in accordance with author's vision of how a music player should look like.
 
 <a href='https://play.google.com/store/apps/details?id=com.github.anrimian.musicplayer&pcampaignid=pcampaignidMKT-Other-global-all-co-prtnr-py-PartBadge-Mar2515-1'><img alt='Get it on Google Play' src='https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png' height=65px/></a>
 
@@ -19,5 +19,9 @@ By Burhan 2010 - Turkish localization\
 Emmanuel Yaro - French localization\
 Frantzis Orestis - Greek localization\
 Gerhard Großmann - German localization\
-Alfikar - Indonesian localization
+Alfikar - Indonesian localization\
+Cayp Tony - Chinese localization\
+知止 - Simplified Chinese localization\
+김서진 - Korean localization
+
 

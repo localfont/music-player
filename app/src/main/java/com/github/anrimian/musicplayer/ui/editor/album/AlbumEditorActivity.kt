@@ -4,7 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.widget.TextView
-import com.github.anrimian.filesync.models.ProgressInfo
+import androidx.core.view.WindowCompat
+import com.github.anrimian.fsync.models.ProgressInfo
 import com.github.anrimian.musicplayer.Constants
 import com.github.anrimian.musicplayer.Constants.Tags
 import com.github.anrimian.musicplayer.R
@@ -17,16 +18,16 @@ import com.github.anrimian.musicplayer.ui.common.dialogs.input.InputTextDialogFr
 import com.github.anrimian.musicplayer.ui.common.error.ErrorCommand
 import com.github.anrimian.musicplayer.ui.common.format.FormatUtils
 import com.github.anrimian.musicplayer.ui.common.format.MessagesUtils
-import com.github.anrimian.musicplayer.ui.common.format.asInt
+import com.github.anrimian.musicplayer.ui.common.view.attachSystemBarsColor
 import com.github.anrimian.musicplayer.ui.editor.common.ErrorHandler
-import com.github.anrimian.musicplayer.ui.utils.AndroidUtils
 import com.github.anrimian.musicplayer.ui.utils.ViewUtils
+import com.github.anrimian.musicplayer.ui.utils.applyBottomHorizontalInsets
+import com.github.anrimian.musicplayer.ui.utils.applyTopInsets
 import com.github.anrimian.musicplayer.ui.utils.dialogs.ProgressDialogFragment
 import com.github.anrimian.musicplayer.ui.utils.fragments.DialogFragmentDelayRunner
 import com.github.anrimian.musicplayer.ui.utils.fragments.DialogFragmentRunner
-import com.github.anrimian.musicplayer.ui.utils.setToolbar
-import com.github.anrimian.musicplayer.ui.utils.slidr.SlidrPanel
 import com.google.android.material.snackbar.Snackbar
+import com.r0adkll.slidr.Slidr
 import moxy.ktx.moxyPresenter
 
 class AlbumEditorActivity : BaseMvpAppCompatActivity(), AlbumEditorView {
@@ -56,11 +57,16 @@ class AlbumEditorActivity : BaseMvpAppCompatActivity(), AlbumEditorView {
     override fun onCreate(savedInstanceState: Bundle?) {
         Components.getAppComponent().themeController().applyCurrentSlidrTheme(this)
         super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         binding = ActivityAlbumEditBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        AndroidUtils.setNavigationBarColorAttr(this, android.R.attr.colorBackground)
 
-        setToolbar(binding.toolbar, R.string.edit_album_tags)
+        binding.toolbar.applyTopInsets()
+        binding.root.applyBottomHorizontalInsets()
+        attachSystemBarsColor()
+
+        binding.toolbar.setNavigationButtonBackClickListener { onBackPressedDispatcher.onBackPressed() }
+        binding.toolbar.setTitle(R.string.edit_album_tags)
 
         binding.changeAuthorClickableArea.setOnClickListener { presenter.onChangeAuthorClicked() }
         binding.changeNameClickableArea.setOnClickListener { presenter.onChangeNameClicked() }
@@ -72,11 +78,7 @@ class AlbumEditorActivity : BaseMvpAppCompatActivity(), AlbumEditorView {
             copyText(binding.tvName, binding.tvNameHint)
         }
 
-        SlidrPanel.attachWithNavBarChange(
-            this,
-            R.attr.playerPanelBackground,
-            android.R.attr.colorBackground
-        )
+        Slidr.attach(this)
 
         errorHandler = ErrorHandler(
             this,

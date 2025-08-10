@@ -1,8 +1,8 @@
 package com.github.anrimian.musicplayer.lite.di.app
 
 import android.content.Context
-import com.github.anrimian.filesync.SyncInteractor
-import com.github.anrimian.filesync.stubs.StubSyncInteractor
+import com.github.anrimian.fsync.SyncInteractor
+import com.github.anrimian.fsync.stubs.StubSyncInteractor
 import com.github.anrimian.musicplayer.data.controllers.music.error.PlayerErrorParserImpl
 import com.github.anrimian.musicplayer.data.controllers.music.players.utils.ExoPlayerMediaItemBuilder
 import com.github.anrimian.musicplayer.data.controllers.music.players.utils.MediaPlayerDataSourceBuilder

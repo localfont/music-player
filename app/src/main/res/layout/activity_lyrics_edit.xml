@@ -12,36 +12,33 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-        <androidx.appcompat.widget.Toolbar
+        <com.github.anrimian.musicplayer.ui.common.toolbar.AdvancedToolbar
             android:id="@+id/toolbar"
             android:layout_width="0dp"
             android:layout_height="?attr/actionBarSize"
-            android:minHeight="?attr/actionBarSize"
-            android:background="?attr/colorPrimary"
-            android:elevation="8dp"
+            android:elevation="@dimen/toolbar_elevation"
             android:theme="@style/ToolbarStyle"
-            app:titleTextColor="?attr/toolbarTextColorPrimary"
-            app:subtitleTextColor="?attr/toolbarTextColorSecondary"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            tools:title="Title"/>
+            app:layout_constraintEnd_toEndOf="parent"/>
 
         <androidx.core.widget.NestedScrollView
+            android:id="@+id/nsvContainer"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:fillViewport="true"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toBottomOf="@id/toolbar"
-            app:layout_constraintBottom_toTopOf="@id/btnChange">
+            app:layout_constraintBottom_toBottomOf="parent">
 
             <EditText
                 style="@style/EditTextStyle"
                 android:id="@+id/evLyrics"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:paddingVertical="@dimen/content_margin"
+                android:paddingTop="@dimen/content_margin"
+                android:paddingBottom="@dimen/list_bottom_padding_with_fab"
                 android:paddingHorizontal="@dimen/content_margin"
                 android:gravity="top|center_horizontal"
                 android:textAlignment="center"
@@ -54,14 +51,13 @@
 
         </androidx.core.widget.NestedScrollView>
 
-        <Button
-            style="@style/ButtonBorderlessStyle"
+        <TextView
+            style="@style/ButtonBrightStyle"
             android:id="@+id/btnChange"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
+            android:background="@drawable/bg_fab_menu"
             android:text="@string/change"
-            android:layout_gravity="end|bottom"
             android:layout_marginBottom="@dimen/content_vertical_margin"
             android:layout_marginEnd="@dimen/content_horizontal_margin"
             app:layout_constraintBottom_toBottomOf="parent"

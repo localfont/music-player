@@ -1,8 +1,8 @@
 package com.github.anrimian.musicplayer.ui.editor.common
 
-import com.github.anrimian.filesync.SyncInteractor
-import com.github.anrimian.filesync.models.ProgressInfo
-import com.github.anrimian.filesync.models.state.file.FileSyncState
+import com.github.anrimian.fsync.SyncInteractor
+import com.github.anrimian.fsync.models.ProgressInfo
+import com.github.anrimian.fsync.models.state.file.FileTaskType
 import com.github.anrimian.musicplayer.domain.models.sync.FileKey
 import com.github.anrimian.musicplayer.domain.utils.rx.doOnFirst
 import io.reactivex.rxjava3.core.Completable
@@ -41,12 +41,13 @@ fun performFilesChangeAction(
                 .switchMap { id ->
                     syncInteractor.getFileSyncStateObservable(id)
                         .observeOn(uiScheduler)
-                        .filter { state -> state is FileSyncState.Downloading }
+                        .filter { stateOpt -> stateOpt.value?.taskType == FileTaskType.DOWNLOAD }
                         .doOnFirst { onFilesPrepared(++preparedFilesCount) }
                 }
-                .subscribe { fileSyncState ->
-                    if (fileSyncState is FileSyncState.Downloading) {
-                        onFileDownloading(fileSyncState.getProgress())
+                .subscribe { stateOpt ->
+                    val state = stateOpt.value
+                    if (state != null) {
+                        onFileDownloading(state.getProgress())
                     }
                 }
         )

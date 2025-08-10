@@ -1,13 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    xmlns:tools="http://schemas.android.com/tools">
+    android:layout_height="match_parent">
 
     <androidx.core.widget.NestedScrollView
-        android:id="@+id/container_view"
+        android:id="@+id/nsvContainer"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:clipToPadding="false"
         android:background="?android:attr/colorBackground">
 
         <LinearLayout
@@ -27,7 +29,7 @@
                 android:layout_marginStart="@dimen/content_horizontal_margin"/>
 
             <TextView
-                android:id="@+id/tv_log_info"
+                android:id="@+id/tvLogInfo"
                 style="@style/TextStyle.Medium"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -36,7 +38,7 @@
                 android:text="@string/log_info_text"/>
 
         <LinearLayout
-            android:id="@+id/log_actions_container"
+            android:id="@+id/llLogActions"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="vertical"
@@ -44,7 +46,7 @@
             android:gravity="end">
 
             <Button
-                android:id="@+id/btn_delete"
+                android:id="@+id/btnDelete"
                 style="@style/ButtonBrightStyle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -55,7 +57,7 @@
                 android:layout_marginBottom="@dimen/content_vertical_margin"/>
 
             <Button
-                android:id="@+id/btn_view"
+                android:id="@+id/btnView"
                 style="@style/ButtonBrightStyle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -64,7 +66,7 @@
                 android:layout_marginBottom="@dimen/content_vertical_margin"/>
 
             <Button
-                android:id="@+id/btn_send"
+                android:id="@+id/btnSend"
                 style="@style/ButtonBrightStyle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -75,13 +77,13 @@
         </LinearLayout>
 
         <View
-            android:id="@+id/log_divider"
+            android:id="@+id/dividerLog"
             style="@style/Divider.Horizontal"
             android:layout_marginStart="@dimen/content_horizontal_margin"
             android:layout_marginEnd="@dimen/content_horizontal_margin"/>
 
             <TextView
-                android:id="@+id/tv_about"
+                android:id="@+id/tvAbout"
                 style="@style/TextStyle.Medium"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

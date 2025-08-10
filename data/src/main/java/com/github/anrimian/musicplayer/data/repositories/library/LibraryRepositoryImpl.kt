@@ -1,477 +1,435 @@
-package com.github.anrimian.musicplayer.data.repositories.library;
+package com.github.anrimian.musicplayer.data.repositories.library
 
-import com.github.anrimian.musicplayer.data.database.dao.albums.AlbumsDaoWrapper;
-import com.github.anrimian.musicplayer.data.database.dao.artist.ArtistsDaoWrapper;
-import com.github.anrimian.musicplayer.data.database.dao.compositions.CompositionsDaoWrapper;
-import com.github.anrimian.musicplayer.data.database.dao.folders.FoldersDaoWrapper;
-import com.github.anrimian.musicplayer.data.database.dao.genre.GenresDaoWrapper;
-import com.github.anrimian.musicplayer.data.database.dao.ignoredfolders.IgnoredFoldersDao;
-import com.github.anrimian.musicplayer.data.storage.files.StorageFilesDataSource;
-import com.github.anrimian.musicplayer.domain.models.albums.Album;
-import com.github.anrimian.musicplayer.domain.models.albums.AlbumComposition;
-import com.github.anrimian.musicplayer.domain.models.artist.Artist;
-import com.github.anrimian.musicplayer.domain.models.composition.Composition;
-import com.github.anrimian.musicplayer.domain.models.composition.CorruptionType;
-import com.github.anrimian.musicplayer.domain.models.composition.DeletedComposition;
-import com.github.anrimian.musicplayer.domain.models.composition.FullComposition;
-import com.github.anrimian.musicplayer.domain.models.folders.FileSource;
-import com.github.anrimian.musicplayer.domain.models.folders.FolderFileSource;
-import com.github.anrimian.musicplayer.domain.models.folders.FolderInfo;
-import com.github.anrimian.musicplayer.domain.models.folders.IgnoredFolder;
-import com.github.anrimian.musicplayer.domain.models.genres.Genre;
-import com.github.anrimian.musicplayer.domain.models.sync.FileKey;
-import com.github.anrimian.musicplayer.domain.repositories.LibraryRepository;
-import com.github.anrimian.musicplayer.domain.repositories.MediaScannerRepository;
-import com.github.anrimian.musicplayer.domain.repositories.SettingsRepository;
-import com.github.anrimian.musicplayer.domain.utils.ListUtils;
-import com.github.anrimian.musicplayer.domain.utils.TextUtils;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
-
-import javax.annotation.Nullable;
-
-import io.reactivex.rxjava3.core.Completable;
-import io.reactivex.rxjava3.core.Observable;
-import io.reactivex.rxjava3.core.Scheduler;
-import io.reactivex.rxjava3.core.Single;
-import kotlin.Pair;
+import com.github.anrimian.musicplayer.data.database.dao.albums.AlbumsDaoWrapper
+import com.github.anrimian.musicplayer.data.database.dao.artist.ArtistsDaoWrapper
+import com.github.anrimian.musicplayer.data.database.dao.compositions.CompositionsDaoWrapper
+import com.github.anrimian.musicplayer.data.database.dao.folders.FoldersDaoWrapper
+import com.github.anrimian.musicplayer.data.database.dao.genre.GenresDaoWrapper
+import com.github.anrimian.musicplayer.data.database.dao.ignoredfolders.IgnoredFoldersDao
+import com.github.anrimian.musicplayer.data.storage.files.StorageFilesDataSource
+import com.github.anrimian.musicplayer.domain.models.albums.Album
+import com.github.anrimian.musicplayer.domain.models.albums.AlbumComposition
+import com.github.anrimian.musicplayer.domain.models.artist.Artist
+import com.github.anrimian.musicplayer.domain.models.composition.Composition
+import com.github.anrimian.musicplayer.domain.models.composition.CorruptionType
+import com.github.anrimian.musicplayer.domain.models.composition.DeletedComposition
+import com.github.anrimian.musicplayer.domain.models.composition.FullComposition
+import com.github.anrimian.musicplayer.domain.models.folders.FileSource
+import com.github.anrimian.musicplayer.domain.models.folders.FolderFileSource
+import com.github.anrimian.musicplayer.domain.models.folders.FolderInfo
+import com.github.anrimian.musicplayer.domain.models.folders.IgnoredFolder
+import com.github.anrimian.musicplayer.domain.models.genres.Genre
+import com.github.anrimian.musicplayer.domain.models.sync.FileKey
+import com.github.anrimian.musicplayer.domain.repositories.LibraryRepository
+import com.github.anrimian.musicplayer.domain.repositories.MediaScannerRepository
+import com.github.anrimian.musicplayer.domain.repositories.SettingsRepository
+import com.github.anrimian.musicplayer.domain.utils.ListUtils
+import com.github.anrimian.musicplayer.domain.utils.TextUtils
+import com.github.anrimian.musicplayer.domain.utils.rx.collectIntoList
+import io.reactivex.rxjava3.core.Completable
+import io.reactivex.rxjava3.core.Observable
+import io.reactivex.rxjava3.core.Scheduler
+import io.reactivex.rxjava3.core.Single
+import java.util.LinkedList
 
 /**
  * Created on 24.10.2017.
  */
+class LibraryRepositoryImpl(
+    private val storageFilesDataSource: StorageFilesDataSource,
+    private val compositionsDao: CompositionsDaoWrapper,
+    private val artistsDao: ArtistsDaoWrapper,
+    private val albumsDao: AlbumsDaoWrapper,
+    private val genresDao: GenresDaoWrapper,
+    private val foldersDao: FoldersDaoWrapper,
+    private val ignoredFoldersDao: IgnoredFoldersDao,
+    private val settingsPreferences: SettingsRepository,
+    private val mediaScannerRepository: MediaScannerRepository,
+    private val scheduler: Scheduler
+) : LibraryRepository {
 
-public class LibraryRepositoryImpl implements LibraryRepository {
-
-    private final StorageFilesDataSource storageFilesDataSource;
-    private final CompositionsDaoWrapper compositionsDao;
-    private final ArtistsDaoWrapper artistsDao;
-    private final AlbumsDaoWrapper albumsDao;
-    private final GenresDaoWrapper genresDao;
-    private final FoldersDaoWrapper foldersDao;
-    private final IgnoredFoldersDao ignoredFoldersDao;
-    private final SettingsRepository settingsPreferences;
-    private final MediaScannerRepository mediaScannerRepository;
-    private final Scheduler scheduler;
-
-    public LibraryRepositoryImpl(StorageFilesDataSource storageFilesDataSource,
-                                 CompositionsDaoWrapper compositionsDao,
-                                 ArtistsDaoWrapper artistsDao,
-                                 AlbumsDaoWrapper albumsDao,
-                                 GenresDaoWrapper genresDao,
-                                 FoldersDaoWrapper foldersDao,
-                                 IgnoredFoldersDao ignoredFoldersDao,
-                                 SettingsRepository settingsPreferences,
-                                 MediaScannerRepository mediaScannerRepository,
-                                 Scheduler scheduler) {
-        this.storageFilesDataSource = storageFilesDataSource;
-        this.compositionsDao = compositionsDao;
-        this.artistsDao = artistsDao;
-        this.albumsDao = albumsDao;
-        this.genresDao = genresDao;
-        this.foldersDao = foldersDao;
-        this.ignoredFoldersDao = ignoredFoldersDao;
-        this.settingsPreferences = settingsPreferences;
-        this.mediaScannerRepository = mediaScannerRepository;
-        this.scheduler = scheduler;
+    override fun getAllCompositionsObservable(searchText: String?): Observable<List<Composition>> {
+        return settingsPreferences.compositionsOrderObservable
+            .switchMap { order ->
+                settingsPreferences.displayFileNameObservable
+                    .switchMap { useFileName ->
+                        compositionsDao.getAllObservable(order, useFileName, searchText)
+                    }
+            }
     }
 
-    @Override
-    public Observable<List<Composition>> getAllCompositionsObservable(@Nullable String searchText) {
-        return settingsPreferences.getCompositionsOrderObservable()
-                .switchMap(order -> settingsPreferences.getDisplayFileNameObservable()
-                        .switchMap(useFileName -> compositionsDao.getAllObservable(
-                                order,
-                                useFileName,
-                                searchText)
-                        )
-                );
+    override fun getCompositionObservable(id: Long): Observable<Composition> {
+        return settingsPreferences.displayFileNameObservable
+            .switchMap { useFileName -> compositionsDao.getCompositionObservable(id, useFileName) }
     }
 
-    @Override
-    public Observable<Composition> getCompositionObservable(long id) {
-        return settingsPreferences.getDisplayFileNameObservable()
-                .switchMap(useFileName -> compositionsDao.getCompositionObservable(id, useFileName));
+    override fun getFullCompositionObservable(id: Long): Observable<FullComposition> {
+        return compositionsDao.getFullCompositionObservable(id)
     }
 
-    @Override
-    public Observable<FullComposition> getFullCompositionObservable(long id) {
-        return compositionsDao.getFullCompositionObservable(id);
+    override fun getLyricsObservable(id: Long): Observable<String> {
+        return compositionsDao.getLyricsObservable(id)
     }
 
-    @Override
-    public Observable<String> getLyricsObservable(long id) {
-        return compositionsDao.getLyricsObservable(id);
+    override fun writeErrorAboutComposition(
+        corruptionType: CorruptionType?,
+        composition: Composition
+    ): Completable {
+        return Completable.fromAction {
+            compositionsDao.setCorruptionType(corruptionType, composition.id)
+        }.subscribeOn(scheduler)
     }
 
-    @Override
-    public Completable writeErrorAboutComposition(CorruptionType corruptionType, Composition composition) {
-        return Completable.fromAction(() -> compositionsDao.setCorruptionType(corruptionType, composition.getId()))
-                .subscribeOn(scheduler);
+    override fun deleteComposition(composition: Composition): Single<DeletedComposition> {
+        return Single.fromCallable {
+            val id = composition.id
+            var deletedComposition = compositionsDao.selectDeletedComposition(
+                id,
+                settingsPreferences.isDisplayFileNameEnabled
+            )
+            deletedComposition = storageFilesDataSource.deleteCompositionFile(deletedComposition)
+            compositionsDao.delete(id)
+            return@fromCallable deletedComposition
+        }.subscribeOn(scheduler)
     }
 
-    @Override
-    public Single<DeletedComposition> deleteComposition(Composition composition) {
-        return Single.fromCallable(() -> {
-            long id = composition.getId();
-            DeletedComposition deletedComposition = compositionsDao.selectDeletedComposition(id,
-                    settingsPreferences.isDisplayFileNameEnabled());
-            deletedComposition = storageFilesDataSource.deleteCompositionFile(deletedComposition);
-            compositionsDao.delete(id);
-            return deletedComposition;
-        }).subscribeOn(scheduler);
+    override fun deleteCompositions(compositions: List<Composition>): Single<List<DeletedComposition>> {
+        return Single.fromCallable {
+            val ids = ListUtils.mapToLongArray(compositions, Composition::id)
+            var deletedCompositions = compositionsDao.selectDeletedComposition(
+                ids,
+                settingsPreferences.isDisplayFileNameEnabled
+            )
+            deletedCompositions = storageFilesDataSource.deleteCompositionFiles(
+                deletedCompositions,
+                compositions
+            )
+            compositionsDao.deleteAll(ids)
+            return@fromCallable deletedCompositions
+        }.subscribeOn(scheduler)
     }
 
-    @Override
-    public Single<List<DeletedComposition>> deleteCompositions(List<Composition> compositions) {
-        return Single.fromCallable(() -> {
-            Long[] ids = ListUtils.mapToLongArray(compositions, Composition::getId);
-            List<DeletedComposition> deletedCompositions = compositionsDao.selectDeletedComposition(
-                    ids,
-                    settingsPreferences.isDisplayFileNameEnabled()
-            );
-            deletedCompositions = storageFilesDataSource.deleteCompositionFiles(deletedCompositions, compositions);
-            compositionsDao.deleteAll(ids);
-            return deletedCompositions;
-        }).subscribeOn(scheduler);
+    override fun getFoldersInFolder(
+        folderId: Long?,
+        searchQuery: String?
+    ): Observable<List<FileSource>> {
+        return settingsPreferences.folderOrderObservable
+            .switchMap { order ->
+                settingsPreferences.displayFileNameObservable
+                    .switchMap { useFileName ->
+                        foldersDao.getFilesObservable(folderId, order, useFileName, searchQuery)
+                    }
+            }
     }
 
-    @Override
-    public Observable<List<FileSource>> getFoldersInFolder(@Nullable Long folderId,
-                                                           @Nullable String searchQuery) {
-        return settingsPreferences.getFolderOrderObservable()
-                .switchMap(order -> settingsPreferences.getDisplayFileNameObservable()
-                        .switchMap(useFileName -> foldersDao.getFilesObservable(
-                                folderId,
-                                order,
-                                useFileName,
-                                searchQuery)
-                        )
-                );
+    override fun getFolderObservable(folderId: Long): Observable<FolderInfo> {
+        return foldersDao.getFolderObservable(folderId)
     }
 
-    @Override
-    public Observable<FolderInfo> getFolderObservable(long folderId) {
-        return foldersDao.getFolderObservable(folderId);
+    override fun getAllCompositionsInFolder(folderId: Long?): Single<List<Composition>> {
+        return Single.fromCallable { selectAllCompositionsInFolder(folderId) }
+            .subscribeOn(scheduler)
     }
 
-    @Override
-    public Single<List<Composition>> getAllCompositionsInFolder(@Nullable Long folderId) {
-        return Single.fromCallable(() -> selectAllCompositionsInFolder(folderId))
-                .subscribeOn(scheduler);
+    override fun getAllCompositionsInFolders(fileSources: Iterable<FileSource>): Single<List<Composition>> {
+        return foldersDao.extractAllCompositionsFromFiles(
+            fileSources,
+            settingsPreferences.folderOrder,
+            settingsPreferences.isDisplayFileNameEnabled
+        ).subscribeOn(scheduler)
     }
 
-    @Override
-    public Single<List<Composition>> getAllCompositionsInFolders(Iterable<FileSource> fileSources) {
-        return foldersDao.extractAllCompositionsFromFiles(fileSources, settingsPreferences.getFolderOrder(), settingsPreferences.isDisplayFileNameEnabled())
-                .subscribeOn(scheduler);
+    override fun deleteFolder(folder: FolderFileSource): Single<List<DeletedComposition>> {
+        return Single.fromCallable {
+            val compositions = compositionsDao.getAllCompositionsInFolder(
+                folder.id,
+                settingsPreferences.isDisplayFileNameEnabled
+            )
+            val ids = ListUtils.mapToLongArray(compositions, Composition::id)
+            var deletedCompositions = compositionsDao.selectDeletedComposition(
+                ids,
+                settingsPreferences.isDisplayFileNameEnabled
+            )
+            deletedCompositions = storageFilesDataSource.deleteCompositionFiles(
+                deletedCompositions,
+                folder
+            )
+            foldersDao.deleteFolder(folder.id, ids)
+            return@fromCallable deletedCompositions
+        }.subscribeOn(scheduler)
     }
 
-    @Override
-    public Single<List<DeletedComposition>> deleteFolder(FolderFileSource folder) {
-        return Single.fromCallable(() -> compositionsDao.getAllCompositionsInFolder(
-                        folder.getId(),
-                        settingsPreferences.isDisplayFileNameEnabled()
-                )).map(compositions -> {
-                    Long[] ids = ListUtils.mapToLongArray(compositions, Composition::getId);
-                    List<DeletedComposition> deletedCompositions = compositionsDao.selectDeletedComposition(
-                            ids,
-                            settingsPreferences.isDisplayFileNameEnabled()
-                    );
-                    deletedCompositions = storageFilesDataSource.deleteCompositionFiles(deletedCompositions, folder);
-                    foldersDao.deleteFolder(folder.getId(), ids);
-                    return deletedCompositions;
-                })
-                .subscribeOn(scheduler);
-    }
-
-    @Override
-    public Single<List<DeletedComposition>> deleteFolders(List<FileSource> folders) {
+    override fun deleteFolders(folders: List<FileSource>): Single<List<DeletedComposition>> {
         return foldersDao.extractAllCompositionsFromFiles(folders)
-                .map(idList -> {
-                    Long[] ids = ListUtils.mapToLongArray(idList, id -> id);
-                    List<DeletedComposition> deletedCompositions = compositionsDao.selectDeletedComposition(
-                            ids,
-                            settingsPreferences.isDisplayFileNameEnabled()
-                    );
-                    deletedCompositions = storageFilesDataSource.deleteCompositionFiles(deletedCompositions, folders);
-                    foldersDao.deleteFolders(extractFolderIds(folders), ids);
-                    return deletedCompositions;
-                })
-                .subscribeOn(scheduler);
+            .map { idList ->
+                val ids = idList.toTypedArray()
+                var deletedCompositions = compositionsDao.selectDeletedComposition(
+                    ids,
+                    settingsPreferences.isDisplayFileNameEnabled
+                )
+                deletedCompositions = storageFilesDataSource.deleteCompositionFiles(
+                    deletedCompositions,
+                    folders
+                )
+                foldersDao.deleteFolders(extractFolderIds(folders), ids)
+                return@map deletedCompositions
+            }.subscribeOn(scheduler)
     }
 
-    @Override
-    public Single<List<Long>> getAllParentFolders(@Nullable Long folderId) {
-        return Single.fromCallable(() -> foldersDao.getAllParentFoldersId(folderId))
-                .subscribeOn(scheduler);
+    override fun getAllParentFolders(folderId: Long?): Single<List<Long>> {
+        return Single.fromCallable { foldersDao.getAllParentFoldersId(folderId) }
+            .subscribeOn(scheduler)
     }
 
-    @Override
-    public Single<List<Long>> getAllParentFoldersForComposition(long id) {
-        return Single.fromCallable(() -> {
-            Long folderId = compositionsDao.getFolderId(id);
-            return foldersDao.getAllParentFoldersId(folderId);
-        }).subscribeOn(scheduler);
+    override fun getAllParentFoldersForComposition(compositionId: Long): Single<List<Long>> {
+        return Single.fromCallable{
+            val folderId = compositionsDao.getFolderId(compositionId)
+            foldersDao.getAllParentFoldersId(folderId)
+        }.subscribeOn(scheduler)
     }
 
-    @Override
-    public Single<List<String>> getFolderNamesInPath(@Nullable String path) {
-        return Single.fromCallable(() -> {
-            Long folderId;
+    override fun getFolderNamesInPath(path: String?): Single<List<String>> {
+        return Single.fromCallable {
+            val folderId: Long?
             if (TextUtils.isEmpty(path)) {
-                folderId = null;
+                folderId = null
             } else {
-                folderId = compositionsDao.findFolderId(path);
+                folderId = compositionsDao.findFolderId(path)
                 if (folderId == null) {
-                    return Collections.<String>emptyList();
+                    return@fromCallable emptyList<String>()
                 }
             }
-            return foldersDao.getFolderNamesInFolder(folderId);
-        }).subscribeOn(scheduler);
+            return@fromCallable foldersDao.getFolderNamesInFolder(folderId)
+        }.subscribeOn(scheduler)
     }
 
-    @Override
-    public Observable<List<Artist>> getArtistsObservable(@Nullable String searchText) {
-        return settingsPreferences.getArtistsOrderObservable()
-                .switchMap(order -> artistsDao.getAllObservable(order, searchText));
+    override fun getArtistsObservable(searchText: String?): Observable<List<Artist>> {
+        return settingsPreferences.artistsOrderObservable
+            .switchMap { order -> artistsDao.getAllObservable(order, searchText) }
     }
 
-    @Override
-    public Single<List<Long>> getAllCompositionIdsByArtists(long artistId) {
+    override fun getAllCompositionIdsByArtists(artistId: Long): Single<List<Long>> {
         return artistsDao.getAllCompositionIdsByArtist(artistId)
-                .subscribeOn(scheduler);
+            .subscribeOn(scheduler)
     }
 
-    @Override
-    public Single<List<Long>> getAllCompositionIdsByArtists(Iterable<Artist> artists) {
+    override fun getAllCompositionIdsByArtists(artists: Iterable<Artist>): Single<List<Long>> {
         return Observable.fromIterable(artists)
-                .flatMapSingle(artist -> artistsDao.getAllCompositionIdsByArtist(artist.getId()))
-                .<List<Long>>collect(ArrayList::new, List::addAll)
-                .subscribeOn(scheduler);
+            .flatMapSingle { artist -> artistsDao.getAllCompositionIdsByArtist(artist.id) }
+            .collectIntoList(ArrayList<Long>::addAll)
+            .subscribeOn(scheduler)
     }
 
-    @Override
-    public Single<List<Composition>> getAllCompositionsByArtists(Iterable<Artist> artists) {
+    override fun getAllCompositionsByArtists(artists: Iterable<Artist>): Single<List<Composition>> {
         return Observable.fromIterable(artists)
-                .map(artist -> artistsDao.getAllCompositionsByArtist(
-                        artist.getId(),
-                        settingsPreferences.isDisplayFileNameEnabled())
+            .map { artist ->
+                artistsDao.getAllCompositionsByArtist(
+                    artist.id,
+                    settingsPreferences.isDisplayFileNameEnabled
                 )
-                .<List<Composition>>collect(ArrayList::new, List::addAll)
-                .subscribeOn(scheduler);
+            }
+            .collectIntoList(ArrayList<Composition>::addAll)
+            .subscribeOn(scheduler)
     }
 
-    @Override
-    public Single<List<Composition>> getAllCompositionsByArtistIds(Iterable<Long> artists) {
+    override fun getAllCompositionsByArtistIds(artists: Iterable<Long>): Single<List<Composition>> {
         return Observable.fromIterable(artists)
-                .map(artisId -> artistsDao.getAllCompositionsByArtist(
-                        artisId,
-                        settingsPreferences.isDisplayFileNameEnabled())
+            .map { artisId ->
+                artistsDao.getAllCompositionsByArtist(
+                    artisId,
+                    settingsPreferences.isDisplayFileNameEnabled
                 )
-                .<List<Composition>>collect(ArrayList::new, List::addAll)
-                .subscribeOn(scheduler);
+            }
+            .collectIntoList(ArrayList<Composition>::addAll)
+            .subscribeOn(scheduler)
     }
 
-    @Override
-    public Observable<List<Composition>> getCompositionsByArtist(long artistId) {
-        return settingsPreferences.getDisplayFileNameObservable()
-                .switchMap(useFileName -> artistsDao.getCompositionsByArtistObservable(artistId, useFileName));
+    override fun getCompositionsByArtist(artistId: Long): Observable<List<Composition>> {
+        return settingsPreferences.displayFileNameObservable
+            .switchMap { useFileName ->
+                artistsDao.getCompositionsByArtistObservable(artistId, useFileName)
+            }
     }
 
-    @Override
-    public Observable<Artist> getArtistObservable(long artistId) {
-        return artistsDao.getArtistObservable(artistId);
+    override fun getArtistObservable(artistId: Long): Observable<Artist> {
+        return artistsDao.getArtistObservable(artistId)
     }
 
-    @Override
-    public Observable<List<Album>> getAllAlbumsForArtist(long artistId) {
-        return albumsDao.getAllAlbumsForArtistObservable(artistId);
+    override fun getAllAlbumsForArtist(artistId: Long): Observable<List<Album>> {
+        return albumsDao.getAllAlbumsForArtistObservable(artistId)
     }
 
-    @Override
-    public Single<String[]> getAuthorNames() {
-        return Single.fromCallable(artistsDao::getAuthorNames)
-                .subscribeOn(scheduler);
+    override fun getAuthorNames(): Single<Array<String>> {
+        return Single.fromCallable { artistsDao.authorNames }
+            .subscribeOn(scheduler)
     }
 
-    @Override
-    public Observable<List<Album>> getAlbumsObservable(@Nullable String searchText) {
-        return settingsPreferences.getAlbumsOrderObservable()
-                .switchMap(order -> albumsDao.getAllObservable(order, searchText));
+    override fun getAlbumsObservable(searchText: String?): Observable<List<Album>> {
+        return settingsPreferences.albumsOrderObservable
+            .switchMap { order -> albumsDao.getAllObservable(order, searchText) }
     }
 
-    @Override
-    public Observable<List<AlbumComposition>> getAlbumItemsObservable(long albumId) {
-        return settingsPreferences.getDisplayFileNameObservable()
-                .switchMap(useFileName -> albumsDao.getCompositionsInAlbumObservable(albumId, useFileName));
+    override fun getAlbumItemsObservable(albumId: Long): Observable<List<AlbumComposition>> {
+        return settingsPreferences.displayFileNameObservable
+            .switchMap { useFileName ->
+                albumsDao.getCompositionsInAlbumObservable(albumId, useFileName)
+            }
     }
 
-    @Override
-    public Single<List<Long>> getCompositionIdsInAlbum(long albumId) {
+    override fun getCompositionIdsInAlbum(albumId: Long): Single<List<Long>> {
         return albumsDao.getCompositionIdsInAlbum(albumId)
-                .subscribeOn(scheduler);
+            .subscribeOn(scheduler)
     }
 
-    @Override
-    public Single<List<Long>> getCompositionIdsInAlbums(Iterable<Album> albums) {
+    override fun getCompositionIdsInAlbums(albums: Iterable<Album>): Single<List<Long>> {
         return Observable.fromIterable(albums)
-                .flatMapSingle(album -> albumsDao.getCompositionIdsInAlbum(album.getId()))
-                .<List<Long>>collect(ArrayList::new, List::addAll)
-                .subscribeOn(scheduler);
+            .flatMapSingle { album -> albumsDao.getCompositionIdsInAlbum(album.id) }
+            .collectIntoList(ArrayList<Long>::addAll)
+            .subscribeOn(scheduler)
     }
 
-    @Override
-    public Single<List<Composition>> getCompositionsInAlbums(Iterable<Album> albums) {
+    override fun getCompositionsInAlbums(albums: Iterable<Album>): Single<List<Composition>> {
         return Observable.fromIterable(albums)
-                .map(album -> albumsDao.getCompositionsInAlbum(
-                        album.getId(),
-                        settingsPreferences.isDisplayFileNameEnabled())
+            .map { album ->
+                albumsDao.getCompositionsInAlbum(
+                    album.id,
+                    settingsPreferences.isDisplayFileNameEnabled
                 )
-                .<List<Composition>>collect(ArrayList::new, List::addAll)
-                .subscribeOn(scheduler);
+            }
+            .collectIntoList(ArrayList<Composition>::addAll)
+            .subscribeOn(scheduler)
     }
 
-    @Override
-    public Single<List<Composition>> getCompositionsByAlbumIds(Iterable<Long> albumIds) {
+    override fun getCompositionsByAlbumIds(albumIds: Iterable<Long>): Single<List<Composition>> {
         return Observable.fromIterable(albumIds)
-                .map(albumId -> albumsDao.getCompositionsInAlbum(
-                        albumId,
-                        settingsPreferences.isDisplayFileNameEnabled())
+            .map { albumId ->
+                albumsDao.getCompositionsInAlbum(
+                    albumId,
+                    settingsPreferences.isDisplayFileNameEnabled
                 )
-                .<List<Composition>>collect(ArrayList::new, List::addAll)
-                .subscribeOn(scheduler);
+            }
+            .collectIntoList(ArrayList<Composition>::addAll)
+            .subscribeOn(scheduler)
     }
 
-    @Override
-    public Observable<Album> getAlbumObservable(long albumId) {
-        return albumsDao.getAlbumObservable(albumId);
+    override fun getAlbumObservable(albumId: Long): Observable<Album> {
+        return albumsDao.getAlbumObservable(albumId)
     }
 
-    @Override
-    public Single<String[]> getAlbumNames() {
-        return Single.fromCallable(albumsDao::getAlbumNames)
-                .subscribeOn(scheduler);
+    override fun getAlbumNames(): Single<Array<String>> {
+        return Single.fromCallable { albumsDao.albumNames }
+            .subscribeOn(scheduler)
     }
 
-    @Override
-    public Observable<List<Genre>> getGenresObservable(@Nullable String searchText) {
-        return settingsPreferences.getGenresOrderObservable()
-                .switchMap(order -> genresDao.getAllObservable(order, searchText));
+    override fun getGenresObservable(searchText: String?): Observable<List<Genre>> {
+        return settingsPreferences.genresOrderObservable
+            .switchMap { order -> genresDao.getAllObservable(order, searchText) }
     }
 
-    @Override
-    public Observable<List<Composition>> getGenreItemsObservable(long genreId) {
-        return settingsPreferences.getDisplayFileNameObservable()
-                .switchMap(useFileName -> genresDao.getCompositionsInGenreObservable(genreId, useFileName));
+    override fun getGenreItemsObservable(genreId: Long): Observable<List<Composition>> {
+        return settingsPreferences.displayFileNameObservable
+            .switchMap { useFileName ->
+                genresDao.getCompositionsInGenreObservable(genreId, useFileName)
+            }
     }
 
-    @Override
-    public Single<List<Long>> getCompositionIdsInGenres(Iterable<Genre> genres) {
+    override fun getCompositionIdsInGenres(genres: Iterable<Genre>): Single<List<Long>> {
         return Observable.fromIterable(genres)
-                .flatMapSingle(playList -> genresDao.getAllCompositionIdsByGenre(playList.getId()))
-                .<List<Long>>collect(ArrayList::new, List::addAll)
-                .subscribeOn(scheduler);
+            .flatMapSingle { playList -> genresDao.getAllCompositionIdsByGenre(playList.id) }
+            .collectIntoList(ArrayList<Long>::addAll)
+            .subscribeOn(scheduler)
     }
 
-    @Override
-    public Single<List<Composition>> getCompositionsInGenres(Iterable<Genre> genres) {
+    override fun getCompositionsInGenres(genres: Iterable<Genre>): Single<List<Composition>> {
         return Observable.fromIterable(genres)
-                .map(genre -> genresDao.getCompositionsInGenre(
-                        genre.getId(),
-                        settingsPreferences.isDisplayFileNameEnabled())
+            .map { genre ->
+                genresDao.getCompositionsInGenre(
+                    genre.id,
+                    settingsPreferences.isDisplayFileNameEnabled
                 )
-                .<List<Composition>>collect(ArrayList::new, List::addAll)
-                .subscribeOn(scheduler);
+            }
+            .collectIntoList(ArrayList<Composition>::addAll)
+            .subscribeOn(scheduler)
     }
 
-    @Override
-    public Single<List<Composition>> getCompositionsInGenresIds(Iterable<Long> genresIds) {
+    override fun getCompositionsInGenresIds(genresIds: Iterable<Long>): Single<List<Composition>> {
         return Observable.fromIterable(genresIds)
-                .map(genreId -> genresDao.getCompositionsInGenre(
-                        genreId,
-                        settingsPreferences.isDisplayFileNameEnabled())
+            .map { genreId ->
+                genresDao.getCompositionsInGenre(
+                    genreId,
+                    settingsPreferences.isDisplayFileNameEnabled
                 )
-                .<List<Composition>>collect(ArrayList::new, List::addAll)
-                .subscribeOn(scheduler);
+            }
+            .collectIntoList(ArrayList<Composition>::addAll)
+            .subscribeOn(scheduler)
     }
 
-    @Override
-    public Single<List<Long>> getAllCompositionsByGenre(long genreId) {
+    override fun getAllCompositionsByGenre(genreId: Long): Single<List<Long>> {
         return genresDao.getAllCompositionIdsByGenre(genreId)
-                .subscribeOn(scheduler);
+            .subscribeOn(scheduler)
     }
 
-    @Override
-    public Single<String[]> getGenreNames(long forCompositionId) {
-        return Single.fromCallable(() -> genresDao.getGenreNames(forCompositionId))
-                .subscribeOn(scheduler);
+    override fun getGenreNames(forCompositionId: Long): Single<Array<String>> {
+        return Single.fromCallable { genresDao.getGenreNames(forCompositionId) }
+            .subscribeOn(scheduler)
     }
 
-    @Override
-    public Observable<Genre> getGenreObservable(long genreId) {
-        return genresDao.getGenreObservable(genreId);
+    override fun getGenreObservable(genreId: Long): Observable<Genre> {
+        return genresDao.getGenreObservable(genreId)
     }
 
-    @Override
-    public Single<Pair<IgnoredFolder, List<FileKey>>> addFolderToIgnore(FolderFileSource folder) {
-        return Single.fromCallable(() -> {
-            var folderPath = foldersDao.getFullFolderPath(folder.getId());
-            var compositions = compositionsDao.getCompositionsInFolder(folder.getId());
-            var ignoredFolder = ignoredFoldersDao.insertIgnoredFolder(folderPath);
-            mediaScannerRepository.rescanStorage();
-            return new Pair<>(ignoredFolder, compositions);
-        }).subscribeOn(scheduler);
+    override fun addFolderToIgnore(folder: FolderFileSource): Single<Pair<IgnoredFolder, List<FileKey>>> {
+        return Single.fromCallable {
+            val folderPath = foldersDao.getFullFolderPath(folder.id)
+            val compositions = compositionsDao.getCompositionsInFolder(folder.id)
+            val ignoredFolder = ignoredFoldersDao.insertIgnoredFolder(folderPath)
+            mediaScannerRepository.rescanStorage()
+            return@fromCallable Pair(ignoredFolder, compositions)
+        }.subscribeOn(scheduler)
     }
 
-    @Override
-    public Single<List<FileKey>> addFolderToIgnore(IgnoredFolder folder) {
-        return Single.fromCallable(() -> {
-            var compositions = compositionsDao.getCompositionsInFolder(folder.getRelativePath());
-            var ignoredFolder = ignoredFoldersDao.insert(folder.getRelativePath(), folder.getAddDate());
-            mediaScannerRepository.rescanStorage();
-            return compositions;
-        }).subscribeOn(scheduler);
+    override fun addFolderToIgnore(folder: IgnoredFolder): Single<List<FileKey>> {
+        return Single.fromCallable {
+            val compositions = compositionsDao.getCompositionsInFolder(folder.relativePath)
+            ignoredFoldersDao.insert(folder.relativePath, folder.addDate)
+            mediaScannerRepository.rescanStorage()
+            return@fromCallable compositions
+        }.subscribeOn(scheduler)
     }
 
-    @Override
-    public Observable<List<IgnoredFolder>> getIgnoredFoldersObservable() {
-        return ignoredFoldersDao.getIgnoredFoldersObservable();
+    override fun getIgnoredFoldersObservable(): Observable<List<IgnoredFolder>> {
+        return ignoredFoldersDao.getIgnoredFoldersObservable()
     }
 
-    @Override
-    public Single<List<FileKey>> deleteIgnoredFolder(IgnoredFolder folder) {
-        return Single.fromCallable(() -> {
-            deleteIgnoredFolder(folder.getRelativePath());
-            return compositionsDao.getCompositionsInFolder(folder.getRelativePath());
-        }).subscribeOn(scheduler);
+    override fun deleteIgnoredFolder(folder: IgnoredFolder): Single<List<FileKey>> {
+        return Single.fromCallable { deleteIgnoredFolder(folder.relativePath) }
+            .subscribeOn(scheduler)
     }
 
-    @Override
-    public void deleteIgnoredFolder(String folderRelativePath) {
-        int deletedRows = ignoredFoldersDao.deleteIgnoredFolder(folderRelativePath);
+    override fun deleteIgnoredFolder(folderRelativePath: String): List<FileKey> {
+        val deletedRows = ignoredFoldersDao.deleteIgnoredFolder(folderRelativePath)
         if (deletedRows > 0) {
-            mediaScannerRepository.rescanStorage();
+            mediaScannerRepository.rescanStorage()
+            return compositionsDao.getCompositionsInFolder(folderRelativePath)
         }
+        return emptyList()
     }
 
-    private List<Long> extractFolderIds(List<FileSource> sources) {
-        List<Long> result = new LinkedList<>();
-        for (FileSource source : sources) {
-            if (source instanceof FolderFileSource) {
-                result.add(((FolderFileSource) source).getId());
+    private fun extractFolderIds(sources: List<FileSource>): List<Long> {
+        val result = LinkedList<Long>()
+        for (source in sources) {
+            if (source is FolderFileSource) {
+                result.add(source.id)
             }
         }
-        return result;
+        return result
     }
 
-    private List<Composition> selectAllCompositionsInFolder(Long folderId) {
+    private fun selectAllCompositionsInFolder(folderId: Long?): List<Composition> {
         return foldersDao.getAllCompositionsInFolder(
-                folderId,
-                settingsPreferences.getFolderOrder(),
-                settingsPreferences.isDisplayFileNameEnabled()
-        );
+            folderId,
+            settingsPreferences.folderOrder,
+            settingsPreferences.isDisplayFileNameEnabled
+        )
     }
 }

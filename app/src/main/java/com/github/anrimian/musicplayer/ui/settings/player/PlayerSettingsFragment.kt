@@ -20,6 +20,7 @@ import com.github.anrimian.musicplayer.ui.common.toolbar.AdvancedToolbar
 import com.github.anrimian.musicplayer.ui.equalizer.EqualizerDialogFragment
 import com.github.anrimian.musicplayer.ui.settings.player.impls.EnabledMediaPlayersDialogFragment
 import com.github.anrimian.musicplayer.ui.utils.ViewUtils
+import com.github.anrimian.musicplayer.ui.utils.applyBottomInsets
 import com.github.anrimian.musicplayer.ui.utils.fragments.DialogFragmentRunner
 import com.github.anrimian.musicplayer.ui.utils.fragments.safeShow
 import com.github.anrimian.musicplayer.ui.utils.slidr.SlidrPanel
@@ -45,6 +46,9 @@ class PlayerSettingsFragment : MvpAppCompatFragment(), PlayerSettingsView {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        binding.nsvContainer.applyBottomInsets()
+
         val toolbar: AdvancedToolbar = requireActivity().findViewById(R.id.toolbar)
         toolbar.setTitle(R.string.settings)
         toolbar.setSubtitle(R.string.playing)
@@ -59,7 +63,7 @@ class PlayerSettingsFragment : MvpAppCompatFragment(), PlayerSettingsView {
         binding.flKeepNotificationClickableArea.setOnClickListener { presenter.onSelectKeepNotificationTimeClicked() }
         binding.flSoundBalanceClickableArea.setOnClickListener { presenter.onSoundBalanceClicked() }
 
-        SlidrPanel.simpleSwipeBack(binding.nsvContainer, this, toolbar::onStackFragmentSlided)
+        SlidrPanel.simpleSwipeBack(binding.nsvContainer, this, toolbar::setNavigationButtonProgress)
 
         enabledMediaPlayersDialogFragmentRunner = DialogFragmentRunner(
             childFragmentManager,

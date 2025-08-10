@@ -13,7 +13,7 @@ import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuItem
-import android.view.Window
+import android.view.View
 import android.view.animation.AccelerateInterpolator
 import android.view.animation.DecelerateInterpolator
 import android.widget.FrameLayout
@@ -32,119 +32,145 @@ import com.github.anrimian.musicplayer.ui.common.menu.PopupMenuWindow.showPopup
 import com.github.anrimian.musicplayer.ui.utils.AndroidUtils
 import com.github.anrimian.musicplayer.ui.utils.ViewUtils
 import com.github.anrimian.musicplayer.ui.utils.attrColor
-import com.github.anrimian.musicplayer.ui.utils.fragments.navigation.FragmentNavigation
-import com.github.anrimian.musicplayer.ui.utils.fragments.navigation.FragmentStackListener
+import com.github.anrimian.musicplayer.ui.utils.getParcelableExtra
 import com.github.anrimian.musicplayer.ui.utils.views.menu.ActionMenuUtil
 import com.github.anrimian.musicplayer.ui.utils.views.text_view.SimpleTextWatcher
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.subjects.BehaviorSubject
 
-class AdvancedToolbar : FrameLayout {
-    constructor(context: Context) : this(context, null)
-    constructor(context: Context, attrs: AttributeSet?) : this(context, attrs, 0)
-    constructor(context: Context, attrs: AttributeSet?, defStyleAttr: Int) : super(context, attrs, defStyleAttr) {
-        init()
-    }
+class AdvancedToolbar @JvmOverloads constructor(
+    context: Context,
+    attrs: AttributeSet? = null,
+    defStyleAttr: Int = 0
+) : FrameLayout(context, attrs, defStyleAttr) {
 
-    constructor(
-        context: Context,
-        attrs: AttributeSet?,
-        defStyleAttr: Int,
-        defStyleRes: Int,
-    ) : super(context, attrs, defStyleAttr, defStyleRes) {
-        init()
-    }
+    private val binding = PartialToolbarBinding.inflate(LayoutInflater.from(context), this)
 
-    private lateinit var binding: PartialToolbarBinding
+    @ColorInt private var controlButtonColor = 0
+    @ColorInt private var controlButtonActionModeColor = 0
+    @ColorInt private var backgroundColor = 0
+    @ColorInt private var backgroundActionModeColor = 0
+    @ColorInt private var statusBarColor = 0
+    @ColorInt private var statusBarActionModeColor = 0
 
-    private val stackChangeListener: FragmentStackListener = StackChangeListenerImpl()
+    private val backgroundDrawable: ToolbarBackgroundDrawable
 
-    private lateinit var window: Window
-
-    @ColorInt
-    private var controlButtonColor = 0
-    @ColorInt
-    private var controlButtonActionModeColor = 0
-    @ColorInt
-    private var backgroundColor = 0
-    @ColorInt
-    private var backgroundActionModeColor = 0
-    @ColorInt
-    private var statusBarColor = 0
-    @ColorInt
-    private var statusBarActionModeColor = 0
-
-    private lateinit var navigation: FragmentNavigation
-    private lateinit var drawerArrowDrawable: DrawerArrowDrawable
-    private lateinit var bottomSheetListener: (() -> Boolean)
+    private val navigationDrawable: DrawerArrowDrawable
+    private var isNavigationDrawableStateInitialized = false
+    private var isNavigationButtonBackModeLocked = false
+    private var titleClickListener: OnClickListener? = null
     private var textChangeListener: ((String) -> Unit)? = null
     private var textConfirmListener: ((String) -> Unit)? = null
+    private var actionModeExitListener: (() -> Unit)? = null
+    private var searchModeExitListener: (() -> Unit)? = null
 
     private val searchModeSubject = BehaviorSubject.createDefault(false)
+    private val searchModeLockedSubject = BehaviorSubject.createDefault(false)
     private val selectionModeSubject = BehaviorSubject.createDefault(false)
 
-    private var isContentVisible = false
     private var isInSearchMode = false
     private var isInActionMode = false
 
-    fun init() {
-        binding = PartialToolbarBinding.inflate(LayoutInflater.from(context), this)
+    private var contentAlpha = 1f
 
+    init {
         binding.etSearch.addTextChangedListener(SimpleTextWatcher(::onSearchTextChanged))
         binding.etSearch.setOnEditorActionListener(OnEditorActionListener(::onSearchTextViewAction))
 
+        binding.tvSubtitle.visibility = GONE
         binding.etSearch.visibility = INVISIBLE
         binding.ivActionIcon.visibility = GONE
         binding.clSelectionMode.visibility = INVISIBLE
+        binding.ivNavHint.visibility = INVISIBLE
 
         controlButtonColor = context.attrColor(R.attr.toolbarTextColorPrimary)
         controlButtonActionModeColor = context.attrColor(R.attr.actionModeTextColor)
         backgroundColor = context.attrColor(R.attr.colorPrimary)
         backgroundActionModeColor = context.attrColor(R.attr.actionModeBackgroundColor)
+        statusBarColor = context.attrColor(android.R.attr.statusBarColor)
+        statusBarActionModeColor = context.attrColor(R.attr.actionModeStatusBarColor).let { color ->
+            if (color == -1) 0 else color//strange bug if color is white(0) - can't find get color from resource
+        }
+
+        backgroundDrawable = ToolbarBackgroundDrawable(backgroundColor, statusBarColor)
+        background = backgroundDrawable
+
+        navigationDrawable = DrawerArrowDrawable(context).apply {
+            color = context.attrColor(R.attr.toolbarTextColorPrimary)
+        }
+        binding.ivNavigation.setImageDrawable(navigationDrawable)
+        binding.ivNavigation.visibility = View.INVISIBLE
     }
 
-    fun setWindow(window: Window) {
-        this.window = window
-        statusBarColor = window.context.attrColor(android.R.attr.statusBarColor)
-        statusBarActionModeColor = window.context.attrColor(R.attr.actionModeStatusBarColor)
+    fun setNavigationButtonBackModeLocked(isLocked: Boolean) {
+        isNavigationButtonBackModeLocked = isLocked
     }
 
-    fun setupWithNavigation(
-        navigation: FragmentNavigation,
-        drawerArrowDrawable: DrawerArrowDrawable,
-        bottomSheetListener: () -> Boolean,
-        onNavigationClick: () -> Unit
-    ) {
-        this.navigation = navigation
-        this.drawerArrowDrawable = drawerArrowDrawable
-        this.bottomSheetListener = bottomSheetListener
-
-        binding.ivNavigation.setImageDrawable(drawerArrowDrawable)
-        binding.ivNavigation.setOnClickListener { onNavigationClick() }
-        onFragmentStackChanged(navigation.screensCount, true)
-        navigation.addStackChangeListener(stackChangeListener)
+    fun setNavigationButtonClickListener(onClick: () -> Unit) {
+        binding.ivNavigation.setOnClickListener { onClick() }
     }
 
-    fun setSearchModeEnabled(enabled: Boolean) {
-        setSearchModeEnabled(enabled, true, false)
+    fun setNavigationButtonBackClickListener(onClick: () -> Unit) {
+        isNavigationButtonBackModeLocked = true
+        setNavigationButtonProgressInternal(1f)
+        binding.ivNavigation.setOnClickListener { onClick() }
+    }
+
+    fun setNavigationButtonProgress(progress: Float) {
+        setNavigationButtonProgressInternal(progress)
+    }
+
+    fun setNavigationButtonMode(isBase: Boolean, animate: Boolean) {
+        val endProgress = if (isBase) 0f else 1f // 0 for hamburger, 1 for arrow
+        if (navigationDrawable.progress == endProgress) {
+            initNavButtonIfNeeded()
+            return
+        }
+
+        if (animate && isNavigationDrawableStateInitialized) {
+            val animator = getControlButtonAnimatorToState(targetProgress = endProgress)
+            animator.duration = Constants.Animation.TOOLBAR_ARROW_ANIMATION_TIME
+            animator.start()
+        } else {
+            setNavigationButtonProgressInternal(endProgress)
+        }
+    }
+
+    fun setup(configCallback: SetupConfig.() -> Unit): AdvancedToolbar {
+        val config = SetupConfig(context, this, getTitle(), getSubtitle(), getSearchText())
+        configCallback(config)
+        setTitle(config.title)
+        setSubtitle(config.subtitle)
+        setupSearch(config.textChangeListener, config.searchExitListener, config.configSearchText)
+        setSearchLocked(config.isSearchLocked)
+        setupOptionsMenu(config.menuResId, config.menuListener)
+        setTitleClickListener(config.titleClickListener)
+        setupSelectionModeMenu(
+            config.selectionMenuResId,
+            config.selectionMenuListener,
+            config.selectionMenuExitListener
+        )
+        return this
     }
 
     fun setSearchModeEnabled(
         enabled: Boolean,
-        showKeyboard: Boolean,
-        jumpToState: Boolean,
+        showKeyboard: Boolean = true,
+        jumpToState: Boolean = false
     ) {
-        if (!::bottomSheetListener.isInitialized) {
-            return  //uninitialized state
-        }
         isInSearchMode = enabled
         searchModeSubject.onNext(enabled)
         binding.etSearch.visibility = if (enabled) VISIBLE else GONE
-        binding.clTitleContainer.alpha = if (!enabled && isContentVisible) 1f else 0f
+        binding.clTitleContainer.alpha = if (enabled || contentAlpha < 1f) 0f else 1f
         binding.acvMain.visibility = if (enabled) GONE else VISIBLE
-        if (!isDrawerArrowLocked()) {
-            setCommandButtonMode(!enabled, !jumpToState)
+
+        if (enabled || !isNavigationButtonBackModeLocked) {
+            setNavigationButtonMode(
+                isBase = !enabled,
+                animate = !jumpToState
+            )
         }
+
         if (enabled) {
             binding.etSearch.requestFocus()
             if (showKeyboard) {
@@ -156,16 +182,14 @@ class AdvancedToolbar : FrameLayout {
         }
     }
 
-    fun setupOptionsMenu(@MenuRes menuResId: Int, listener: ((MenuItem) -> Unit)) {
-        ActionMenuUtil.setupMenu(binding.acvMain, menuResId, listener)
+    fun setupOptionsMenu(@MenuRes menuResId: Int, listener: ((MenuItem) -> Unit)?): Menu {
+        val menuValidResId = if (menuResId == 0) R.menu.empty_stub_menu else menuResId
+        val validListener = listener ?: {}
+        return ActionMenuUtil.setupMenu(binding.acvMain, menuValidResId, validListener)
     }
 
     fun clearOptionsMenu() {
         ActionMenuUtil.setupMenu(binding.acvMain, R.menu.empty_stub_menu) { }
-    }
-
-    fun release() {
-        navigation.removeStackChangeListener(stackChangeListener)
     }
 
     override fun onSaveInstanceState(): Parcelable {
@@ -185,41 +209,22 @@ class AdvancedToolbar : FrameLayout {
             val isKeyboardShown = bundle.getBoolean(IS_KEYBOARD_SHOWN)
             setSearchModeEnabled(isInSearchMode, isKeyboardShown, true)
 
-            // disabled because folder screens action mode issues
-//            boolean inSelectionMode = bundle.getBoolean(IN_SELECTION_MODE);
-//            setSelectionModeEnabled(inSelectionMode, false);
-            state = bundle.getParcelable("superState")
+            val inSelectionMode = bundle.getBoolean(IN_SELECTION_MODE)
+            setSelectionModeEnabled(inSelectionMode, false)
+            state = bundle.getParcelableExtra("superState")
         }
         super.onRestoreInstanceState(state)
     }
 
-    fun setup(configCallback: (SetupConfig) -> Unit): AdvancedToolbar {
-        val config = SetupConfig(context, getTitle(), getSubtitle())
-        configCallback(config)
-        setTitle(config.title)
-        setSubtitle(config.subtitle)
-        setupSearch(config.textChangeListener, config.searchText)
-        if (config.menuListener == null) {
-            clearOptionsMenu()
-        } else {
-            setupOptionsMenu(config.menuResId, config.menuListener!!)
-        }
-        setTitleClickListener(config.titleClickListener)
-        if (config.selectionMenuListener != null) {
-            setupSelectionModeMenu(config.selectionMenuResId, config.selectionMenuListener)
-        }
-        return this
-    }
-
-    fun getTitle() = binding.tvTitle.text
+    fun getTitle() = binding.tvToolbarTitle.text
 
     fun setTitle(@StringRes titleId: Int) {
         setTitle(context.getString(titleId))
     }
 
     fun setTitle(title: CharSequence?) {
-        binding.tvTitle.visibility = if (TextUtils.isEmpty(title)) GONE else VISIBLE
-        binding.tvTitle.text = title
+        binding.tvToolbarTitle.visibility = if (TextUtils.isEmpty(title)) GONE else VISIBLE
+        binding.tvToolbarTitle.text = title
         binding.flTitleArea.contentDescription = title
     }
 
@@ -238,10 +243,13 @@ class AdvancedToolbar : FrameLayout {
     }
 
     fun setTitleClickListener(listener: OnClickListener?) {
+        this.titleClickListener = listener
         binding.ivActionIcon.visibility = if (listener == null) GONE else VISIBLE
         binding.flTitleArea.isEnabled = listener != null
         binding.flTitleArea.setOnClickListener(listener)
     }
+
+    fun getTitleClickListener() = titleClickListener
 
     fun clearTitleMenu() {
         setTitleClickListener(null)
@@ -251,74 +259,69 @@ class AdvancedToolbar : FrameLayout {
         setTitleClickListener { v -> showPopup(v, menuResId, Gravity.BOTTOM, listener) }
     }
 
-    fun onStackFragmentSlided(offset: Float) {
-        if (navigation.screensCount <= 2) {
-            drawerArrowDrawable.progress = offset
-        }
-    }
-
     fun isInSearchMode() = isInSearchMode
+
+    fun isInActiveSearchMode() = isInSearchMode && !isSearchLocked()
 
     fun isInActionMode() = isInActionMode
 
-    fun getActionMenuView(): ActionMenuView? = binding.acvMain
+    fun getActionMenuView(): ActionMenuView = binding.acvMain
 
-    fun setupSearch(textChangeListener: ((String) -> Unit)?, text: String?) {
-        setupSearch(textChangeListener)
-        binding.etSearch.setText(text)
-        setSearchModeEnabled(!TextUtils.isEmpty(text))
-    }
-
-    fun setupSearch(textChangeListener: ((String) -> Unit)?) {
+    fun setupSearch(
+        textChangeListener: ((String) -> Unit)?,
+        exitListener: (() -> Unit)? = null,
+        text: String? = null,
+    ) {
         this.textChangeListener = textChangeListener
+        this.searchModeExitListener = exitListener ?: { setSearchModeEnabled(false) }
         textConfirmListener = textChangeListener
+        binding.etSearch.setText(text)
+        setSearchModeEnabled(!TextUtils.isEmpty(text), showKeyboard = true, jumpToState = true)
     }
 
-    fun isSearchLocked() =  !binding.etSearch.isEnabled
+    fun invokeSearchModeExit() {
+        searchModeExitListener?.invoke()
+    }
+
+    fun isSearchLocked() = !binding.etSearch.isEnabled
 
     fun setSearchLocked(locked: Boolean) {
+        searchModeLockedSubject.onNext(locked)
         binding.etSearch.isEnabled = !locked
+    }
+
+    fun setStatusBarHeight(height: Int) {
+        backgroundDrawable.setStatusBarHeight(height)
+    }
+
+    fun setStatusBarColor(@ColorInt color: Int) {
+        backgroundDrawable.setStatusBarColor(color)
+    }
+
+    fun setToolbarBackgroundColor(@ColorInt color: Int) {
+        backgroundDrawable.setColor(color)
     }
 
     fun getSearchText() = binding.etSearch.text.toString()
 
     fun getSearchModeObservable(): Observable<Boolean> = searchModeSubject
 
+    fun getActiveSearchModeObservable(): Observable<Boolean> {
+        return Observable.combineLatest(
+            searchModeSubject,
+            searchModeLockedSubject
+        ) { isSearchModeEnabled, isSearchModeLocked -> isSearchModeEnabled && !isSearchModeLocked }
+    }
+
     fun getSelectionModeObservable(): Observable<Boolean> = selectionModeSubject
 
-    private fun onFragmentStackChanged(stackSize: Int, jumpToState: Boolean) {
-        if (isInSearchMode && !jumpToState) {
-            //close search on navigation back or forward. Ignore first event
-            //possible improving: animate visibility with back button progress
-            setSearchModeEnabled(false)
+    private fun getControlButtonAnimatorToState(targetProgress: Float): ValueAnimator {
+        val startProgress = navigationDrawable.progress
+        val animator = ValueAnimator.ofFloat(startProgress, targetProgress)
+        animator.addUpdateListener { animation ->
+            navigationDrawable.progress = animation.animatedValue as Float
         }
-        val isRoot = stackSize <= 1
-        //hmm, not sure about search mode, check how it works
-        if (isRoot && (bottomSheetListener() || isInSearchMode)) {
-            return
-        }
-        setCommandButtonMode(isRoot, !jumpToState)
-    }
-
-    private fun setCommandButtonMode(isBase: Boolean, animate: Boolean) {
-        val end = if (isBase) 0f else 1f
-        if (animate) {
-            val objectAnimator = getControlButtonAnimator(isBase)
-            objectAnimator.duration = Constants.Animation.TOOLBAR_ARROW_ANIMATION_TIME
-            objectAnimator.start()
-        } else {
-            drawerArrowDrawable.progress = end
-        }
-    }
-
-    private fun getControlButtonAnimator(isArrow: Boolean): ValueAnimator {
-        val start = drawerArrowDrawable.progress
-        val end = if (isArrow) 0f else 1f
-        val objectAnimator = ValueAnimator.ofFloat(start, end)
-        objectAnimator.addUpdateListener { animation ->
-            drawerArrowDrawable.progress = animation.animatedValue as Float
-        }
-        return objectAnimator
+        return animator
     }
 
     private fun onSearchTextViewAction(v: TextView, actionId: Int, event: KeyEvent): Boolean {
@@ -326,25 +329,30 @@ class AdvancedToolbar : FrameLayout {
             textConfirmListener!!.invoke(v.text.toString())
             return true
         }
-        return true
+        return false
     }
 
     private fun onSearchTextChanged(text: String) {
         textChangeListener?.invoke(text)
     }
 
-    fun setControlButtonProgress(slideOffset: Float) {
-        if (!(navigation.screensCount > 1 || isInSearchMode || isInActionMode)) {
-            drawerArrowDrawable.progress = slideOffset
-        }
-    }
-
     fun setControlButtonColor(@ColorInt color: Int) {
-        drawerArrowDrawable.color = color
+        navigationDrawable.color = color
     }
 
-    fun setupSelectionModeMenu(@MenuRes menuResource: Int, listener: ((MenuItem) -> Unit)?) {
-        ActionMenuUtil.setupMenu(binding.acvSelection, menuResource, listener, 1)
+    fun setupSelectionModeMenu(
+        @MenuRes menuResId: Int,
+        listener: ((MenuItem) -> Unit)?,
+        exitListener: (() -> Unit)?
+    ) {
+        val menuValidResId = if (menuResId == 0) R.menu.empty_stub_menu else menuResId
+        val validListener = listener ?: {}
+        ActionMenuUtil.setupMenu(binding.acvSelection, menuValidResId, validListener, 1)
+        actionModeExitListener = exitListener
+    }
+
+    fun invokeActionModeExit() {
+        actionModeExitListener?.invoke()
     }
 
     fun editActionMenu(callback: (Menu) -> Unit) {
@@ -353,11 +361,11 @@ class AdvancedToolbar : FrameLayout {
 
     fun showSelectionMode(count: Int) {
         if (count == 0 && isInActionMode) {
-            setSelectionModeEnabled(false, true)
+            setSelectionModeEnabled(enabled = false, animate = true)
         }
         if (count > 0) {
             if (!isInActionMode) {
-                setSelectionModeEnabled(true, true)
+                setSelectionModeEnabled(enabled = true, animate = true)
             }
             binding.tvSelectionCount.text = count.toString()
         }
@@ -371,12 +379,8 @@ class AdvancedToolbar : FrameLayout {
     }
 
     fun setContentAlpha(alpha: Float) {
+        contentAlpha = alpha
         binding.clTitleContainer.alpha = alpha
-        isContentVisible = alpha == 1f
-    }
-
-    fun setContentVisible(visible: Boolean) {
-        isContentVisible = visible
     }
 
     fun getToolbarModesViewGroup() = binding.flToolbarModes
@@ -393,10 +397,14 @@ class AdvancedToolbar : FrameLayout {
     private fun setSelectionModeEnabled(enabled: Boolean, animate: Boolean) {
         isInActionMode = enabled
         selectionModeSubject.onNext(enabled)
-        var isHamburger = !enabled
-        if (!enabled && isInSearchMode || navigation.screensCount > 1) {
-            isHamburger = false
+
+        val currentNavProgress = navigationDrawable.progress
+        val targetNavProgress = if (!isInSearchMode && !isNavigationButtonBackModeLocked) {
+            if (enabled) 1f else 0f
+        } else {
+            currentNavProgress
         }
+
         val modeElementsVisibility = if (enabled) VISIBLE else INVISIBLE
         val anotherElementsVisibility = if (enabled) INVISIBLE else VISIBLE
         val startControlButtonColor = if (enabled) controlButtonColor else controlButtonActionModeColor
@@ -409,25 +417,27 @@ class AdvancedToolbar : FrameLayout {
             val duration = 300
             val mainAnimatorSet = AnimatorSet()
             mainAnimatorSet.duration = duration.toLong()
-            mainAnimatorSet.play(getControlButtonAnimator(isHamburger))
+            mainAnimatorSet.play(getControlButtonAnimatorToState(targetNavProgress))
                 .with(
                     ViewUtils.getColorAnimator(
                         startControlButtonColor,
                         endControlButtonColor
-                    ) { color -> drawerArrowDrawable.color = color }
+                    ) { color -> navigationDrawable.color = color }
                 )
                 .with(
-                    ViewUtils.getBackgroundAnimator(
-                        this,
+                    ViewUtils.getColorAnimator(
                         startBackgroundColor,
-                        endBackgroundColor
+                        endBackgroundColor,
+                        backgroundDrawable::setColor
                     )
                 )
                 .with(
                     ViewUtils.getColorAnimator(
                         startStatusBarColor,
-                        endStatusBarColor
-                    ) { color -> AndroidUtils.setStatusBarColor(window, color) })
+                        endStatusBarColor,
+                        backgroundDrawable::setStatusBarColor
+                    )
+                )
             val baseAnimators = ArrayList<Animator>()
             if (isInSearchMode) {
                 baseAnimators.add(
@@ -473,7 +483,7 @@ class AdvancedToolbar : FrameLayout {
             finalAnimatorSet.interpolator = if (enabled) DecelerateInterpolator() else AccelerateInterpolator()
             finalAnimatorSet.start()
         } else {
-            setCommandButtonMode(isHamburger, false)
+            setNavigationButtonProgressInternal(targetNavProgress)
             if (isInSearchMode) {
                 binding.etSearch.visibility = anotherElementsVisibility
             } else {
@@ -481,39 +491,57 @@ class AdvancedToolbar : FrameLayout {
                 binding.acvMain.visibility = anotherElementsVisibility
             }
             binding.clSelectionMode.visibility = modeElementsVisibility
-            drawerArrowDrawable.color = endControlButtonColor
-            setBackgroundColor(endBackgroundColor)
-            AndroidUtils.setStatusBarColor(window, endStatusBarColor)
+            navigationDrawable.color = endControlButtonColor
+            backgroundDrawable.setColor(endBackgroundColor)
+            backgroundDrawable.setStatusBarColor(endStatusBarColor)
         }
     }
 
-    private fun isDrawerArrowLocked(): Boolean {
-        return bottomSheetListener() || navigation.screensCount > 1
+    private fun setNavigationButtonProgressInternal(progress: Float) {
+        navigationDrawable.progress = progress
+        initNavButtonIfNeeded()
+    }
+
+    private fun initNavButtonIfNeeded() {
+        if (!isNavigationDrawableStateInitialized) {
+            binding.ivNavigation.visibility = View.VISIBLE
+        }
+        isNavigationDrawableStateInitialized = true
     }
 
     class SetupConfig(
         private val context: Context,
+        val toolbar: AdvancedToolbar,
         var title: CharSequence,
         var subtitle: CharSequence?,
+        var configSearchText: String?
     ) {
 
         var textChangeListener: ((String) -> Unit)? = null
         private var textConfirmListener: ((String) -> Unit)? = null
-        var searchText: String? = null
+        var searchExitListener: (() -> Unit)? = null
+        var isSearchLocked = false
 
         @MenuRes
         var menuResId = 0
         var menuListener: ((MenuItem) -> Unit)? = null
+
         var titleClickListener: OnClickListener? = null
 
         @MenuRes
         var selectionMenuResId = 0
         var selectionMenuListener: ((MenuItem) -> Unit)? = null
+        var selectionMenuExitListener: (() -> Unit)? = null
 
-        fun setupSearch(textChangeListener: ((String) -> Unit)?, text: String?) {
+        fun setupSearch(
+            textChangeListener: ((String) -> Unit)?,
+            exitListener: (() -> Unit)? = null,
+            text: String? = null,
+        ) {
             this.textChangeListener = textChangeListener
             textConfirmListener = textChangeListener
-            searchText = text
+            searchExitListener = exitListener
+            configSearchText = text
         }
 
         fun setupOptionsMenu(@MenuRes menuResId: Int, listener: ((MenuItem) -> Unit)?) {
@@ -521,9 +549,12 @@ class AdvancedToolbar : FrameLayout {
             menuListener = listener
         }
 
-        fun setupSelectionModeMenu(@MenuRes menuResId: Int, listener: ((MenuItem) -> Unit)?) {
+        fun setupSelectionModeMenu(@MenuRes menuResId: Int,
+                                   listener: ((MenuItem) -> Unit),
+                                   exitListener: (() -> Unit)? = null) {
             selectionMenuResId = menuResId
             selectionMenuListener = listener
+            selectionMenuExitListener = exitListener
         }
 
         fun setTitle(@StringRes titleId: Int) {
@@ -537,11 +568,9 @@ class AdvancedToolbar : FrameLayout {
         fun setSubtitle(subtitle: String?) {
             this.subtitle = subtitle
         }
-    }
 
-    private inner class StackChangeListenerImpl : FragmentStackListener {
-        override fun onStackChanged(stackSize: Int) {
-            onFragmentStackChanged(navigation.screensCount, false)
+        fun setSubtitle(@StringRes subtitleResId: Int) {
+            this.subtitle = context.getString(subtitleResId)
         }
     }
 

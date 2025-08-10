@@ -1,5 +1,6 @@
 package com.github.anrimian.musicplayer.ui.library.common.library
 
+import android.view.View
 import androidx.coordinatorlayout.widget.CoordinatorLayout
 import com.github.anrimian.musicplayer.domain.models.composition.Composition
 import com.github.anrimian.musicplayer.domain.models.playlist.PlayList
@@ -15,19 +16,24 @@ abstract class BaseLibraryFragment : MvpAppCompatFragment(), BaseLibraryView {
 
     protected abstract fun getCoordinatorLayout(): CoordinatorLayout
 
+    protected open fun getFloatingActionButton(): View? = null
+
     final override fun onCompositionsAddedToPlayNext(compositions: List<Composition>) {
         val message = MessagesUtils.getPlayNextMessage(requireContext(), compositions)
-        getCoordinatorLayout().showSnackbar(message)
+        getCoordinatorLayout().showSnackbar(message, anchorView = getFloatingActionButton())
     }
 
     final override fun onCompositionsAddedToQueue(compositions: List<Composition>) {
         val message = MessagesUtils.getAddedToQueueMessage(requireContext(), compositions)
-        getCoordinatorLayout().showSnackbar(message)
+        getCoordinatorLayout().showSnackbar(message, anchorView = getFloatingActionButton())
     }
 
-    final override fun showAddingToPlayListComplete(playList: PlayList, compositions: List<Composition>) {
+    final override fun showAddingToPlayListComplete(
+        playList: PlayList,
+        compositions: List<Composition>,
+    ) {
         val text = MessagesUtils.getAddToPlayListCompleteMessage(requireActivity(), playList, compositions)
-        getCoordinatorLayout().showSnackbar(text)
+        getCoordinatorLayout().showSnackbar(text, anchorView = getFloatingActionButton())
     }
 
     final override fun showPlaylistDuplicateEntryDialog(
@@ -48,7 +54,10 @@ abstract class BaseLibraryFragment : MvpAppCompatFragment(), BaseLibraryView {
     }
 
     override fun showErrorMessage(errorCommand: ErrorCommand) {
-        getCoordinatorLayout().showSnackbar(errorCommand.message)
+        getCoordinatorLayout().showSnackbar(
+            errorCommand.message,
+            anchorView = getFloatingActionButton()
+        )
     }
 
 }

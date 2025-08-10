@@ -1,6 +1,6 @@
 package com.github.anrimian.musicplayer.ui.library.folders
 
-import com.github.anrimian.filesync.SyncInteractor
+import com.github.anrimian.fsync.SyncInteractor
 import com.github.anrimian.musicplayer.data.utils.rx.mapError
 import com.github.anrimian.musicplayer.domain.Constants
 import com.github.anrimian.musicplayer.domain.interactors.library.LibraryFoldersScreenInteractor
@@ -148,7 +148,9 @@ class LibraryFoldersPresenter(
     }
 
     fun onBackPathButtonClicked() {
-        checkNotNull(folderId) { "can not go back in root screen" }
+        if (folderId == null) {
+            return
+        }
         closeSelectionMode()
         goBackToPreviousScreen()
     }
@@ -250,7 +252,7 @@ class LibraryFoldersPresenter(
         fileActionDisposable = lastEditAction!!.subscribe({}, this::onDefaultError)
     }
 
-    fun onSelectionModeBackPressed() {
+    fun onExitSelectionModeClicked() {
         closeSelectionMode()
     }
 

@@ -4,5 +4,6 @@ class CompositionMoveData(
     val id: Long,
     val storageId: Long?,
     val fileName: String,
-    val parentPath: String
+    val parentPath: String,
+    val pathModifyTime: Long?
 )

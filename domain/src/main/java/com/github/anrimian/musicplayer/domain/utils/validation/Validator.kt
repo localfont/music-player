@@ -1,47 +1,25 @@
-package com.github.anrimian.musicplayer.domain.utils.validation;
+package com.github.anrimian.musicplayer.domain.utils.validation
 
-import java.util.LinkedList;
-import java.util.List;
+import io.reactivex.rxjava3.core.Single
+import java.util.LinkedList
 
-import javax.annotation.Nullable;
+abstract class Validator<Model : Any> {
 
-import io.reactivex.rxjava3.core.Single;
-
-public abstract class Validator<Model> {
-
-    public Single<Model> validate(Model model) {
-        return Single.just(model)
-                .map(this::validateModel)
-                .flatMap(this::processResult);
-    }
-
-    private Single<Model> processResult(ValidationResult<Model> validationResult) {
-        return Single.create(subscriber -> {
-            List<ValidateError> validateErrors = validationResult.getValidateErrors();
-            if (validateErrors.isEmpty()) {
-                subscriber.onSuccess(validationResult.getModel());
+    fun <T : Model> validate(model: T): Single<T> {
+        return Single.create { emitter ->
+            val errors = LinkedList<ValidateError>()
+            validateModel(model, errors)
+            if (errors.isEmpty()) {
+                emitter.onSuccess(model)
             } else {
-                subscriber.onError(new ValidateException(validateErrors));
-            }
-        });
-    }
-
-    private ValidationResult<Model> validateModel(Model model) {
-        List<ValidateError> errors = new LinkedList<>();
-        for (ValidateFunction validateFunctions : getValidateFunctions(model)) {
-            ValidateError error = validateFunctions.validate();
-            if (error != null) {
-                errors.add(error);
+                emitter.onError(ValidateException(errors))
             }
         }
-        return new ValidationResult<>(model, errors);
     }
 
-    protected abstract List<ValidateFunction> getValidateFunctions(Model model);
+    protected abstract fun validateModel(
+        model: Model,
+        outValidateErrors: MutableList<ValidateError>,
+    )
 
-    protected interface ValidateFunction {
-
-        @Nullable
-        ValidateError validate();
-    }
 }

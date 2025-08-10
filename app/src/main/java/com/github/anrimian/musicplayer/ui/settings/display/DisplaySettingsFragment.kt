@@ -13,6 +13,7 @@ import com.github.anrimian.musicplayer.di.Components
 import com.github.anrimian.musicplayer.ui.common.toolbar.AdvancedToolbar
 import com.github.anrimian.musicplayer.ui.utils.ViewUtils.onCheckChanged
 import com.github.anrimian.musicplayer.ui.utils.ViewUtils.setChecked
+import com.github.anrimian.musicplayer.ui.utils.applyBottomInsets
 import com.github.anrimian.musicplayer.ui.utils.slidr.SlidrPanel
 import moxy.MvpAppCompatFragment
 import moxy.ktx.moxyPresenter
@@ -34,12 +35,15 @@ class DisplaySettingsFragment : MvpAppCompatFragment(), DisplaySettingsView {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        binding.nsvContainer.applyBottomInsets()
+
         val toolbar: AdvancedToolbar = requireActivity().findViewById(R.id.toolbar)
         toolbar.setTitle(R.string.settings)
         toolbar.setSubtitle(R.string.display)
         toolbar.setTitleClickListener(null)
         
-        SlidrPanel.simpleSwipeBack(binding.nsvContainer, this, toolbar::onStackFragmentSlided)
+        SlidrPanel.simpleSwipeBack(binding.nsvContainer, this, toolbar::setNavigationButtonProgress)
 
         binding.cbColoredNotification.visibility = if (
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.O

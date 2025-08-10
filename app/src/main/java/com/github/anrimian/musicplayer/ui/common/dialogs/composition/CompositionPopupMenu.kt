@@ -73,7 +73,7 @@ fun showCompositionPopupMenu(
         val menuAdapter = PopupMenuWindow.createMenuAdapter(menuItems, listener, popupWindowRef)
         menuBinding.rvMenuItems.adapter = ConcatAdapter(headerItem, menuAdapter)
 
-        popupWindowRef.set(AppPopupWindow.showPopupWindow(anchorView, menuBinding.root, gravity, screenMargin))
+        popupWindowRef.set(AppPopupWindow.showPopupWindow(anchorView, menuBinding.root, screenMargin, gravity))
     } else {
         val secondaryMenuHeaderItem = SingleItemAdapter { inflater, parent ->
             PartialPopupPagerSecondaryHeaderBinding.inflate(inflater, parent, false).apply {

@@ -1,6 +1,6 @@
 package com.github.anrimian.musicplayer.domain.interactors.player
 
-import com.github.anrimian.filesync.SyncInteractor
+import com.github.anrimian.fsync.SyncInteractor
 import com.github.anrimian.musicplayer.domain.models.composition.content.CompositionContentSource
 import com.github.anrimian.musicplayer.domain.models.composition.content.RemoteCompositionSource
 import com.github.anrimian.musicplayer.domain.models.composition.source.CompositionSource

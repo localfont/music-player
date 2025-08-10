@@ -1,28 +1,26 @@
-package com.github.anrimian.musicplayer.domain.controllers;
+package com.github.anrimian.musicplayer.domain.controllers
 
-import com.github.anrimian.musicplayer.domain.models.player.AudioFocusEvent;
-import com.github.anrimian.musicplayer.domain.models.volume.VolumeState;
-
-import javax.annotation.Nullable;
-
-import io.reactivex.rxjava3.core.Observable;
+import com.github.anrimian.musicplayer.domain.models.player.AudioFocusEvent
+import com.github.anrimian.musicplayer.domain.models.volume.VolumeState
+import io.reactivex.rxjava3.core.Observable
 
 /**
  * Created on 10.12.2017.
  */
+interface SystemMusicController {
 
-public interface SystemMusicController {
+    fun requestAudioFocus(): Observable<AudioFocusEvent>?
 
-    @Nullable
-    Observable<AudioFocusEvent> requestAudioFocus();
+    fun getAudioBecomingNoisyObservable(): Observable<Any>
 
-    Observable<Object> getAudioBecomingNoisyObservable();
+    fun getVolumeObservable(): Observable<Int>
 
-    Observable<Integer> getVolumeObservable();
+    fun getVolumeStateObservable(): Observable<VolumeState>
 
-    Observable<VolumeState> getVolumeStateObservable();
+    fun getVolumeState(): VolumeState
 
-    void setVolume(int volume);
+    fun setVolume(volume: Int)
 
-    void changeVolumeBy(int volume);
+    fun changeVolumeBy(volume: Int)
+
 }

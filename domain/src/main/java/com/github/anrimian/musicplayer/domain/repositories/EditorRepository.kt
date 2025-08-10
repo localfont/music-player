@@ -1,9 +1,9 @@
 package com.github.anrimian.musicplayer.domain.repositories
 
 import com.github.anrimian.musicplayer.domain.models.composition.FullComposition
-import com.github.anrimian.musicplayer.domain.models.composition.change.ChangedCompositionPath
 import com.github.anrimian.musicplayer.domain.models.composition.content.CompositionContentSource
 import com.github.anrimian.musicplayer.domain.models.folders.FileSource
+import com.github.anrimian.musicplayer.domain.models.folders.FilesChangeResult
 import com.github.anrimian.musicplayer.domain.models.image.ImageSource
 import io.reactivex.rxjava3.core.Completable
 import io.reactivex.rxjava3.core.Single
@@ -90,25 +90,25 @@ interface EditorRepository {
     fun changeCompositionFileName(
         compositionId: Long,
         fileName: String
-    ): Single<ChangedCompositionPath>
+    ): Single<FilesChangeResult>
 
     fun changeFolderName(
         folderId: Long,
         newFolderName: String
-    ): Single<List<ChangedCompositionPath>>
+    ): Single<FilesChangeResult>
 
     fun moveFiles(
         files: Collection<FileSource>,
         fromFolderId: Long?,
         toFolderId: Long?
-    ): Single<List<ChangedCompositionPath>>
+    ): Single<FilesChangeResult>
 
     fun moveFilesToNewDirectory(
         files: Collection<FileSource>,
         fromFolderId: Long?,
         targetParentFolderId: Long?,
         directoryName: String?
-    ): Single<List<ChangedCompositionPath>>
+    ): Single<FilesChangeResult>
 
     fun updateAlbumName(
         name: String?,

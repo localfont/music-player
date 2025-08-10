@@ -26,6 +26,7 @@ import com.github.anrimian.musicplayer.data.utils.Permissions;
 import com.github.anrimian.musicplayer.data.utils.db.CursorWrapper;
 import com.github.anrimian.musicplayer.domain.interactors.playlists.validators.PlayListFileNameValidator;
 import com.github.anrimian.musicplayer.domain.utils.FileUtils;
+import com.github.anrimian.musicplayer.domain.utils.TextUtils;
 
 import java.util.Date;
 import java.util.HashMap;
@@ -34,6 +35,33 @@ import java.util.Map;
 
 @SuppressLint("RestrictedApi")
 class Migrations {
+
+    static Migration MIGRATION_16_17 = new Migration(16, 17) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("CREATE TABLE IF NOT EXISTS `compositions_temp` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `artistId` INTEGER, `albumId` INTEGER, `folderId` INTEGER, `storageId` INTEGER, `title` TEXT, `trackNumber` INTEGER, `discNumber` INTEGER, `comment` TEXT, `lyrics` TEXT, `fileName` TEXT, `duration` INTEGER NOT NULL, `size` INTEGER NOT NULL, `dateAdded` INTEGER, `dateModified` INTEGER, `pathModifyTime` INTEGER, `lastScanDate` INTEGER NOT NULL, `coverModifyTime` INTEGER NOT NULL, `corruptionType` TEXT, `initialSource` INTEGER NOT NULL, FOREIGN KEY(`artistId`) REFERENCES `artists`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , FOREIGN KEY(`albumId`) REFERENCES `albums`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , FOREIGN KEY(`folderId`) REFERENCES `folders`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION )");
+            database.execSQL(
+                    "INSERT INTO `compositions_temp` (" +
+                            "id, artistId, albumId, folderId, storageId, title, trackNumber, " +
+                            "discNumber, comment, lyrics, fileName, duration, size, dateAdded, " +
+                            "dateModified, pathModifyTime, lastScanDate, coverModifyTime, corruptionType, " +
+                            "initialSource" +
+                            ") SELECT " +
+                            "id, artistId, albumId, folderId, storageId, title, trackNumber, " +
+                            "discNumber, comment, lyrics, fileName, duration, size, dateAdded, " +
+                            "dateModified, NULL, lastScanDate, coverModifyTime, corruptionType, " +
+                            "initialSource FROM compositions"
+            );
+
+            database.execSQL("DROP TABLE `compositions`");
+            database.execSQL("ALTER TABLE `compositions_temp` RENAME TO `compositions`");
+
+            database.execSQL("CREATE  INDEX `index_compositions_folderId` ON compositions (`folderId`)");
+            database.execSQL("CREATE  INDEX `index_compositions_artistId` ON compositions (`artistId`)");
+            database.execSQL("CREATE  INDEX `index_compositions_albumId` ON compositions (`albumId`)");
+        }
+    };
+
 
     static Migration getMigration15_16(Context context) {
         return new Migration(15, 16) {
@@ -75,7 +103,7 @@ class Migrations {
                 CursorWrapper cursorWrapper = new CursorWrapper(c);
                 while (c.moveToNext()) {
                     String name = cursorWrapper.getString("name");
-                    if (name == null) {
+                    if (TextUtils.isEmpty(name)) {
                         continue;
                     }
                     String newName = PlayListFileNameValidator.INSTANCE.getFormattedPlaylistName(name);

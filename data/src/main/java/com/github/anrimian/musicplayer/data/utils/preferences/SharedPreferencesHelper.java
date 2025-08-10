@@ -1,8 +1,6 @@
 package com.github.anrimian.musicplayer.data.utils.preferences;
 
-import android.annotation.TargetApi;
 import android.content.SharedPreferences;
-import android.os.Build;
 
 import androidx.collection.LruCache;
 
@@ -214,14 +212,16 @@ public class SharedPreferencesHelper {
         }
     }
 
-    @TargetApi(Build.VERSION_CODES.HONEYCOMB)
     public Set<String> getStringSet(String key, Set<String> defaultValue) {
         return preferences.getStringSet(key, defaultValue);
     }
 
-    @TargetApi(Build.VERSION_CODES.HONEYCOMB)
     public Set<String> getStringSet(String key) {
         return preferences.getStringSet(key, null);
+    }
+
+    public void remove(String key) {
+        preferences.edit().remove(key).apply();
     }
 
 }

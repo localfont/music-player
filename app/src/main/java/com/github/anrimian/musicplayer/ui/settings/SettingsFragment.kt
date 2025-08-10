@@ -17,6 +17,7 @@ import com.github.anrimian.musicplayer.ui.settings.headset.HeadsetSettingsFragme
 import com.github.anrimian.musicplayer.ui.settings.library.LibrarySettingsFragment
 import com.github.anrimian.musicplayer.ui.settings.player.PlayerSettingsFragment
 import com.github.anrimian.musicplayer.ui.settings.themes.ThemeSettingsFragment
+import com.github.anrimian.musicplayer.ui.utils.applyBottomInsets
 import com.github.anrimian.musicplayer.ui.utils.fragments.navigation.FragmentNavigation
 import com.github.anrimian.musicplayer.ui.utils.fragments.navigation.FragmentNavigationListener
 import com.github.anrimian.musicplayer.ui.utils.slidr.SlidrPanel
@@ -25,8 +26,7 @@ import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 /**
  * Created on 19.10.2017.
  */
-class SettingsFragment : Fragment(),
-    FragmentNavigationListener {
+class SettingsFragment : Fragment(), FragmentNavigationListener {
     
     private lateinit var binding: FragmentSettingsBinding
     private lateinit var navigation: FragmentNavigation
@@ -42,6 +42,9 @@ class SettingsFragment : Fragment(),
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        binding.nsvContainer.applyBottomInsets()
+
         val toolbar = requireActivity().findViewById<AdvancedToolbar>(R.id.toolbar)
         navigation = FragmentNavigation.from(parentFragmentManager)
         binding.tvDisplay.setOnClickListener { navigation.addNewFragment(DisplaySettingsFragment()) }
@@ -52,7 +55,7 @@ class SettingsFragment : Fragment(),
         binding.llRunRescanStorage.setOnClickListener { onRescanStorageButtonClicked() }
         ViewUtils.onLongVibrationClick(binding.llRunRescanStorage) { onRescanStorageButtonLongClick() }
 
-        SlidrPanel.simpleSwipeBack(binding.flContainer, this, toolbar::onStackFragmentSlided)
+        SlidrPanel.simpleSwipeBack(binding.nsvContainer, this, toolbar::setNavigationButtonProgress)
     }
 
     override fun onFragmentResumed() {

@@ -9,7 +9,7 @@ import java.io.File
 
 class PlaylistFilesStorage(context: Context, private val analytics: Analytics) {
 
-    private val playlistsFilesDir = File(context.filesDir, PlAY_LISTS_DIRECTORY_NAME)
+    private val playlistsFilesDir = File(context.filesDir, PLAY_LISTS_DIRECTORY_NAME)
 
     private val m3uEditor = M3UEditor()
 
@@ -64,7 +64,7 @@ class PlaylistFilesStorage(context: Context, private val analytics: Analytics) {
     }
 
     private companion object {
-        const val PlAY_LISTS_DIRECTORY_NAME = "playlists"
+        const val PLAY_LISTS_DIRECTORY_NAME = "playlists"
     }
 
 }

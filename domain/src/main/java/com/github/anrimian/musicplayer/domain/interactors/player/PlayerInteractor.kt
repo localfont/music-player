@@ -11,7 +11,7 @@ import com.github.anrimian.musicplayer.domain.models.player.PlayerState
 import com.github.anrimian.musicplayer.domain.models.player.events.MediaPlayerEvent
 import com.github.anrimian.musicplayer.domain.models.player.events.PlayerEvent
 import com.github.anrimian.musicplayer.domain.repositories.SettingsRepository
-import com.github.anrimian.musicplayer.domain.utils.functions.Optional
+import com.github.anrimian.musicplayer.domain.utils.functions.Opt
 import com.github.anrimian.musicplayer.domain.utils.rx.RxUtils
 import io.reactivex.rxjava3.core.Completable
 import io.reactivex.rxjava3.core.Observable
@@ -45,7 +45,7 @@ class PlayerInteractor(
     private val playerEventsSubject = PublishSubject.create<PlayerEvent>()
 
     private var currentSource: CompositionSource? = null
-    private val currentSourceSubject = BehaviorSubject.create<Optional<CompositionSource>>()//add default null value and check all behaviour
+    private val currentSourceSubject = BehaviorSubject.create<Opt<CompositionSource>>()//add default null value and check all behaviour
 
     private var currentPosition = 0L
     private val trackPositionSubject = BehaviorSubject.create<Long>()
@@ -71,7 +71,7 @@ class PlayerInteractor(
         rePrepareCount = 0
 
         this.currentSource = compositionSource
-        currentSourceSubject.onNext(Optional(currentSource))
+        currentSourceSubject.onNext(Opt(currentSource))
 
         prepareToPlayInternal(compositionSource, startPosition)
     }
@@ -79,7 +79,7 @@ class PlayerInteractor(
     fun updateSource(source: CompositionSource) {
         if (this.currentSource == source) {
             this.currentSource = source
-            currentSourceSubject.onNext(Optional(currentSource))
+            currentSourceSubject.onNext(Opt(currentSource))
         }
     }
 
@@ -88,8 +88,8 @@ class PlayerInteractor(
         eventsDisposable.clear()
         RxUtils.dispose(preparationDisposable)
         currentSource = null
-        currentSourceSubject.onNext(Optional(null))
-        systemServiceController.stopMusicService(true)
+        currentSourceSubject.onNext(Opt(null))
+        systemServiceController.stopMusicService(forceStop = true, hideUi = true)
         musicPlayerController.stop()
         playAfterPrepare = false
         isPlayingSubject.onNext(false)
@@ -116,8 +116,8 @@ class PlayerInteractor(
         eventsDisposable.clear()
         val audioFocusObservable = systemMusicController.requestAudioFocus()
         if (audioFocusObservable == null) {
+            systemServiceController.stopMusicService()
             if (isPlayingSubject.value == true) {
-                systemServiceController.stopMusicService()
                 isPlayingSubject.onNext(false)
                 playerStateSubject.onNext(PlayerState.PAUSE)
             }
@@ -252,7 +252,7 @@ class PlayerInteractor(
         return playerEventsSubject
     }
 
-    fun getCurrentSourceObservable(): Observable<Optional<CompositionSource>> {
+    fun getCurrentSourceObservable(): Observable<Opt<CompositionSource>> {
         return currentSourceSubject
     }
 
@@ -328,9 +328,9 @@ class PlayerInteractor(
             return
         }
         eventsDisposable.add(audioFocusObservable.subscribe(this::onAudioFocusChanged))
-        eventsDisposable.add(systemMusicController.audioBecomingNoisyObservable
+        eventsDisposable.add(systemMusicController.getAudioBecomingNoisyObservable()
             .subscribe { onAudioBecomingNoisy() })
-        eventsDisposable.add(systemMusicController.volumeObservable
+        eventsDisposable.add(systemMusicController.getVolumeObservable()
             .subscribe(this::onVolumeChanged))
     }
 

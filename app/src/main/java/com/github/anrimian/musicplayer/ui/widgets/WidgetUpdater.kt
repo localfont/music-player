@@ -140,13 +140,14 @@ class WidgetUpdater(
     }
 
     private fun isAnyWidgetActive(): Boolean {
-        var count = 0
+        val appWidgetManager = AppWidgetManager.getInstance(context)
         for (widgetBinder in widgetBinders) {
-            val appWidgetManager = AppWidgetManager.getInstance(context)
             val cn = ComponentName(context, widgetBinder.getWidgetProviderClass())
-            count += appWidgetManager.getAppWidgetIds(cn).size
+            if (appWidgetManager.getAppWidgetIds(cn).isNotEmpty()) {
+                return true
+            }
         }
-        return count > 0
+        return false
     }
 
 }

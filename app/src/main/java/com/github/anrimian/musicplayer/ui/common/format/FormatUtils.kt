@@ -7,15 +7,16 @@ import androidx.annotation.ColorInt
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.core.graphics.ColorUtils
-import com.github.anrimian.filesync.models.ProgressInfo
-import com.github.anrimian.filesync.models.state.file.FileSyncState
+import com.github.anrimian.fsync.models.ProgressInfo
+import com.github.anrimian.fsync.models.state.file.FileSyncState
+import com.github.anrimian.fsync.models.state.file.FileTaskType
 import com.github.anrimian.musicplayer.Constants
 import com.github.anrimian.musicplayer.R
 import com.github.anrimian.musicplayer.domain.models.player.MediaPlayers
 import com.github.anrimian.musicplayer.domain.models.player.PlayerState
+import com.github.anrimian.musicplayer.ui.common.progress.ProgressView
 import com.github.anrimian.musicplayer.ui.utils.AndroidUtils
 import com.github.anrimian.musicplayer.ui.utils.colorFromAttr
-import com.github.anrimian.musicplayer.ui.utils.views.progress_bar.ProgressView
 import com.google.android.material.progressindicator.BaseProgressIndicator
 import com.google.android.material.progressindicator.BaseProgressIndicatorSpec
 
@@ -33,7 +34,7 @@ fun ProgressView.showFileSyncState(
     /*//debug view
     val time = 3000L
     val timer = java.util.Timer()
-    timer.scheduleAtFixedRate(object : java.util.TimerTask() {
+    timer.schedule(object : java.util.TimerTask() {
         override fun run() {
             post {
                 clearProgress()
@@ -56,26 +57,21 @@ fun ProgressView.showFileSyncState(
         }
     }, 0, time * 4)
     return*/
-    when(fileSyncState) {
-        is FileSyncState.Uploading -> {
+    if (fileSyncState == null) {
+        if (isFileRemote) {
+            clearProgress()
             setVisible(true, animate)
-            setProgressInfo(fileSyncState.getProgress())
-            setIconResource(R.drawable.ic_upload)
+            setIconResource(R.drawable.ic_cloud)
+        } else {
+            setVisible(false, animate, clearIcon = true, clearProgress = true)
         }
-        is FileSyncState.Downloading -> {
-            setVisible(true, animate)
-            setProgressInfo(fileSyncState.getProgress())
-            setIconResource(R.drawable.ic_download)
-        }
-        else -> {
-            if (isFileRemote) {
-                clearProgress()
-                setVisible(true, animate)
-                setIconResource(R.drawable.ic_cloud)
-            } else {
-                setVisible(false, animate, clearIcon = true, clearProgress = true)
-            }
-        }
+    } else {
+        setVisible(true, animate)
+        setProgressInfo(fileSyncState.getProgress())
+        setIconResource(when(fileSyncState.taskType) {
+            FileTaskType.UPLOAD -> R.drawable.ic_upload
+            FileTaskType.DOWNLOAD -> R.drawable.ic_download
+        })
     }
 }
 
@@ -123,13 +119,6 @@ private fun ProgressView.setProgressInfo(progressInfo: ProgressInfo) {
     } else {
         setProgress(progress)
     }
-}
-
-fun ProgressInfo.asInt(): Int {
-    if (total <= 0) {
-        return -1
-    }
-    return ((current.toFloat() / total) * 100).toInt()
 }
 
 fun getRemoteViewPlayerState(isPlaying: Boolean, playerState: PlayerState): Int {

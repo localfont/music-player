@@ -109,7 +109,7 @@ class GenresListPresenter(
         shareGenresCompositions(ArrayList(selectedGenres))
     }
 
-    fun onSelectionModeBackPressed() {
+    fun onExitSelectionModeClicked() {
         closeSelectionMode()
     }
 

@@ -1,7 +1,7 @@
 package com.github.anrimian.musicplayer.di.app;
 
 
-import com.github.anrimian.filesync.SyncInteractor;
+import com.github.anrimian.fsync.SyncInteractor;
 import com.github.anrimian.musicplayer.data.controllers.music.equalizer.EqualizerController;
 import com.github.anrimian.musicplayer.data.storage.files.StorageFilesDataSource;
 import com.github.anrimian.musicplayer.data.storage.providers.albums.StorageAlbumsProvider;

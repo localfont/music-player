@@ -7,6 +7,7 @@ import com.github.anrimian.musicplayer.Constants
 import com.github.anrimian.musicplayer.R
 import com.github.anrimian.musicplayer.data.utils.Permissions
 import com.github.anrimian.musicplayer.di.Components
+import com.github.anrimian.musicplayer.domain.interactors.player.PlayerType
 import com.github.anrimian.musicplayer.infrastructure.service.music.MusicService
 import com.github.anrimian.musicplayer.ui.common.AppAndroidUtils
 
@@ -30,7 +31,7 @@ class WidgetActionsReceiver : BroadcastReceiver() {
             Constants.Actions.SKIP_TO_NEXT -> interactor.skipToNext()
             Constants.Actions.PAUSE,
             Constants.Actions.PLAY -> {
-                AppAndroidUtils.playPause(context, appComponent.playerInteractor())
+                AppAndroidUtils.playPause(context, appComponent.playerInteractor(), PlayerType.LIBRARY)
             }
             Constants.Actions.CHANGE_REPEAT_MODE -> interactor.changeRepeatMode()
             Constants.Actions.CHANGE_SHUFFLE_NODE -> interactor.changeRandomMode()

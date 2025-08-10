@@ -1,6 +1,6 @@
 package com.github.anrimian.musicplayer.ui.player_screen.queue
 
-import com.github.anrimian.filesync.SyncInteractor
+import com.github.anrimian.fsync.SyncInteractor
 import com.github.anrimian.musicplayer.data.utils.rx.retryWithDelay
 import com.github.anrimian.musicplayer.domain.Constants.NO_POSITION
 import com.github.anrimian.musicplayer.domain.interactors.player.LibraryPlayerInteractor
@@ -263,10 +263,9 @@ class PlayQueuePresenter(
     }
 
     private fun onItemPositionReceived(position: Int) {
-        val firstReceive = currentPosition == NO_POSITION
         if (!isDragging && currentPosition != position) {
             currentPosition = position
-            viewState.scrollQueueToPosition(position, !firstReceive)
+            viewState.scrollQueueToPosition(position)
         }
     }
 

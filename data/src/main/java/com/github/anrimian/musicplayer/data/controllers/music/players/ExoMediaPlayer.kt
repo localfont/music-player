@@ -1,12 +1,12 @@
 package com.github.anrimian.musicplayer.data.controllers.music.players
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.net.Uri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.audio.AudioProcessor
-import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
@@ -16,11 +16,14 @@ import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.media3.exoplayer.source.UnrecognizedInputFormatException
+import androidx.media3.exoplayer.upstream.Loader
 import com.github.anrimian.musicplayer.data.controllers.music.equalizer.EqualizerController
+import com.github.anrimian.musicplayer.data.controllers.music.players.exceptions.PlayerOutOfMemoryException
 import com.github.anrimian.musicplayer.data.controllers.music.players.exoplayer.StereoVolumeProcessor
 import com.github.anrimian.musicplayer.data.controllers.music.players.utils.ExoPlayerMediaItemBuilder
 import com.github.anrimian.musicplayer.data.utils.exo_player.PlayerEventListener
 import com.github.anrimian.musicplayer.domain.models.composition.content.CompositionContentSource
+import com.github.anrimian.musicplayer.domain.models.composition.content.NoReadPermissionException
 import com.github.anrimian.musicplayer.domain.models.composition.content.UnsupportedSourceException
 import com.github.anrimian.musicplayer.domain.models.player.SoundBalance
 import com.github.anrimian.musicplayer.domain.models.player.events.MediaPlayerEvent
@@ -31,7 +34,7 @@ import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.subjects.PublishSubject
 import java.util.concurrent.TimeUnit
 
-@UnstableApi
+@SuppressLint("UnsafeOptInUsageError")
 class ExoMediaPlayer(
     private val context: Context,
     private val uiScheduler: Scheduler,
@@ -164,8 +167,18 @@ class ExoMediaPlayer(
     private fun mapPlayerException(throwable: Throwable): Throwable {
         //logic is duplicated in PlayerErrorParserImpl
         //likely all exo player error parsing logic should be here
-        if (throwable is PlaybackException && throwable.cause is UnrecognizedInputFormatException) {
-            return UnsupportedSourceException()
+        if (throwable is PlaybackException) {
+            when (val cause = throwable.cause) {
+                is UnrecognizedInputFormatException -> {
+                    return UnsupportedSourceException()
+                }
+                is Loader.UnexpectedLoaderException -> {
+                    when (val causeOfCause = cause.cause) {
+                        is OutOfMemoryError -> return PlayerOutOfMemoryException()
+                        is SecurityException -> return NoReadPermissionException(causeOfCause)
+                    }
+                }
+            }
         }
         return throwable
     }

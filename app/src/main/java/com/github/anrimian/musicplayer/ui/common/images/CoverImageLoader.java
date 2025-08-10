@@ -34,7 +34,7 @@ import com.github.anrimian.musicplayer.domain.models.composition.Composition;
 import com.github.anrimian.musicplayer.domain.models.composition.FullComposition;
 import com.github.anrimian.musicplayer.domain.models.utils.CompositionHelperKt;
 import com.github.anrimian.musicplayer.domain.utils.functions.Callback;
-import com.github.anrimian.musicplayer.domain.utils.functions.Optional;
+import com.github.anrimian.musicplayer.domain.utils.functions.Opt;
 import com.github.anrimian.musicplayer.ui.common.images.glide.GlideApp;
 import com.github.anrimian.musicplayer.ui.common.images.glide.util.CustomAppWidgetTarget;
 import com.github.anrimian.musicplayer.ui.common.images.models.CompositionImage;
@@ -111,7 +111,7 @@ public class CoverImageLoader {
     public void displayImageInReusableTarget(@NonNull ImageView imageView,
                                              @NonNull ExternalCompositionSource data,
                                              @DrawableRes int errorPlaceholder) {
-        displayImageInReusableTarget(imageView, new UriCompositionImage(data), null, errorPlaceholder);
+        displayImageInReusableTarget(imageView, new UriCompositionImage(data.getUri()), null, errorPlaceholder);
     }
 
     public void displayImageInReusableTarget(@NonNull ImageView imageView,
@@ -164,7 +164,7 @@ public class CoverImageLoader {
 
     public Runnable loadNotificationImage(@Nonnull ExternalCompositionSource source,
                                           Callback<Bitmap> onCompleted) {
-        return loadNotificationImage(new UriCompositionImage(source), onCompleted);
+        return loadNotificationImage(new UriCompositionImage(source.getUri()), onCompleted);
     }
 
     public Bitmap getDefaultNotificationBitmap() {
@@ -178,14 +178,14 @@ public class CoverImageLoader {
             if (defaultNotificationBitmap == null) {
                 BitmapFactory.Options opt = new BitmapFactory.Options();
                 opt.inPreferredConfig = Bitmap.Config.RGB_565;
-                defaultNotificationBitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.ic_music_box, opt);
+                defaultNotificationBitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.ic_notification_icon, opt);
             }
         }
         return defaultNotificationBitmap;
     }
 
     public void loadImage(@Nonnull ExternalCompositionSource data, Callback<Bitmap> onCompleted) {
-        loadImage(new UriCompositionImage(data), onCompleted);
+        loadImage(new UriCompositionImage(data.getUri()), onCompleted);
     }
 
     public void loadImage(@Nonnull Composition data, Callback<Bitmap> onCompleted) {
@@ -201,9 +201,18 @@ public class CoverImageLoader {
                 .into(simpleTarget(onCompleted));
     }
 
-    public Single<Optional<Uri>> loadImageUri(@Nonnull Composition data) {
+    public void loadMediaSessionImage(@Nonnull ExternalCompositionSource data, Callback<Bitmap> onCompleted) {
+        GlideApp.with(context)
+                .asBitmap()
+                .load(new UriCompositionImage(data.getUri()))
+                .override(getCoverMediaSessionSize())
+                .timeout(TIMEOUT_MILLIS)
+                .into(simpleTarget(onCompleted));
+    }
+
+    public Single<Opt<Uri>> loadImageUri(@Nonnull Composition data) {
         return Single.create(emitter ->
-                loadImageUri(data, uri -> emitter.onSuccess(new Optional<>(uri)))
+                loadImageUri(data, uri -> emitter.onSuccess(new Opt<>(uri)))
         );
     }
 
@@ -221,6 +230,29 @@ public class CoverImageLoader {
             onCompleted.call(uri);
         });
         CompositionImage imageData = toImageRequest(data);
+        loadImage(imageData, bitmap ->
+                GlideApp.with(context)
+                        .download(imageData)
+                        .onlyRetrieveFromCache(true)
+                        .timeout(TIMEOUT_MILLIS)
+                        .into(target)
+        );
+    }
+
+    public void loadImageUri(@Nonnull ExternalCompositionSource data, Callback<Uri> onCompleted) {
+        CustomTarget<File> target = simpleTarget(file -> {
+            if (file == null) {
+                onCompleted.call(null);
+                return;
+            }
+            Uri uri = new Uri.Builder()
+                    .scheme(ContentResolver.SCHEME_CONTENT)
+                    .authority(context.getString(R.string.covers_file_provider_authorities))
+                    .path(file.getPath())
+                    .build();
+            onCompleted.call(uri);
+        });
+        UriCompositionImage imageData = new UriCompositionImage(data.getUri());
         loadImage(imageData, bitmap ->
                 GlideApp.with(context)
                         .download(imageData)

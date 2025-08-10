@@ -12,6 +12,7 @@ import android.os.Looper;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 
 import com.github.anrimian.musicplayer.Constants;
@@ -20,6 +21,7 @@ import com.github.anrimian.musicplayer.data.utils.Permissions;
 import com.github.anrimian.musicplayer.di.Components;
 import com.github.anrimian.musicplayer.di.app.AppComponent;
 import com.github.anrimian.musicplayer.domain.controllers.SystemServiceController;
+import com.github.anrimian.musicplayer.domain.interactors.player.PlayerType;
 import com.github.anrimian.musicplayer.domain.repositories.SettingsRepository;
 import com.github.anrimian.musicplayer.infrastructure.service.music.MusicService;
 
@@ -40,11 +42,20 @@ public class SystemServiceControllerImpl implements SystemServiceController {
     }
 
     public static void startPlayForegroundService(Context context, long playDelay) {
+        startPlayForegroundService(context, playDelay, null);
+    }
+
+    public static void startPlayForegroundService(Context context,
+                                                  long playDelay,
+                                                  @Nullable PlayerType playerType) {
         stopHandler.removeCallbacksAndMessages(null);
 
         Intent intent = new Intent(context, MusicService.class);
         intent.putExtra(MusicService.START_FOREGROUND_SIGNAL, true);
         intent.putExtra(MusicService.REQUEST_CODE, Constants.Actions.PLAY);
+        if (playerType != null) {
+            intent.putExtra(MusicService.PLAYER_TYPE, 1);
+        }
         intent.putExtra(MusicService.PLAY_DELAY_MILLIS, playDelay);
         checkPermissionsAndStartServiceFromBg(context, intent);
     }
@@ -110,7 +121,7 @@ public class SystemServiceControllerImpl implements SystemServiceController {
 
     private static void startServiceFromBg(Context context, Intent intent) {
         Intent bgIntent = new Intent(intent);
-        intent.putExtra(MusicService.START_FOREGROUND_SIGNAL, true);
+        bgIntent.putExtra(MusicService.START_FOREGROUND_SIGNAL, true);
         try {
             ContextCompat.startForegroundService(context, bgIntent);
         } catch (Exception e) {

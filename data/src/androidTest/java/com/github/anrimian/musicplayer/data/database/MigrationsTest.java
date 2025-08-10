@@ -31,6 +31,15 @@ public class MigrationsTest {
     );
 
     @Test
+    public void testMigrationFrom16To17() throws Exception {
+        testHelper.createDatabase(TEST_DB_NAME, 16);
+        testHelper.runMigrationsAndValidate(TEST_DB_NAME,
+                17,
+                false,
+                Migrations.MIGRATION_16_17);
+    }
+
+    @Test
     public void testMigrationFrom15To16() throws Exception {
         testHelper.createDatabase(TEST_DB_NAME, 15);
         testHelper.runMigrationsAndValidate(TEST_DB_NAME,

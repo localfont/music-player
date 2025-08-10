@@ -1,10 +1,8 @@
 package com.github.anrimian.musicplayer.ui.main.external_player
 
 import android.content.Intent
-import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Bundle
-import android.provider.MediaStore
 import android.view.Gravity
 import android.view.View
 import android.widget.Toast
@@ -12,7 +10,7 @@ import androidx.annotation.DrawableRes
 import com.github.anrimian.musicplayer.Constants
 import com.github.anrimian.musicplayer.R
 import com.github.anrimian.musicplayer.data.models.composition.source.ExternalCompositionSource
-import com.github.anrimian.musicplayer.data.utils.db.CursorWrapper
+import com.github.anrimian.musicplayer.data.models.folders.UriFileReference
 import com.github.anrimian.musicplayer.databinding.ActivityExternalPlayerBinding
 import com.github.anrimian.musicplayer.di.Components
 import com.github.anrimian.musicplayer.domain.models.utils.CompositionHelper
@@ -27,17 +25,11 @@ import com.github.anrimian.musicplayer.ui.common.menu.showVolumePopup
 import com.github.anrimian.musicplayer.ui.common.view.onRewindHold
 import com.github.anrimian.musicplayer.ui.common.view.setSmallDrawableStart
 import com.github.anrimian.musicplayer.ui.utils.AndroidUtils
-import com.github.anrimian.musicplayer.ui.utils.ImageUtils
 import com.github.anrimian.musicplayer.ui.utils.ViewUtils
 import com.github.anrimian.musicplayer.ui.utils.fragments.DialogFragmentRunner
 import com.github.anrimian.musicplayer.ui.utils.views.seek_bar.SeekBarViewWrapper
-import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
-import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.disposables.Disposable
-import io.reactivex.rxjava3.schedulers.Schedulers
 import moxy.ktx.moxyPresenter
-import java.io.IOException
-import java.util.concurrent.TimeUnit
 
 class ExternalPlayerActivity : BaseMvpAppCompatActivity(), ExternalPlayerView {
 
@@ -60,6 +52,7 @@ class ExternalPlayerActivity : BaseMvpAppCompatActivity(), ExternalPlayerView {
         setContentView(binding.root)
         
         CompatUtils.setOutlineTextButtonStyle(binding.tvPlaybackSpeed)
+        CompatUtils.setOutlineTextButtonStyle(binding.tvVolume)
 
         binding.tvVolume.setOnClickListener { v -> showVolumePopup(v, Gravity.CENTER_VERTICAL) }
 
@@ -89,14 +82,14 @@ class ExternalPlayerActivity : BaseMvpAppCompatActivity(), ExternalPlayerView {
             && intent.getBooleanExtra(Constants.Arguments.LAUNCH_PREPARE_ARG, true)
         ) {
             val uriToPlay = intent.data
-            createCompositionSource(uriToPlay)
+            onUriReceived(uriToPlay)
         }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         val uriToPlay = intent.data
-        createCompositionSource(uriToPlay)
+        onUriReceived(uriToPlay)
     }
 
     override fun onDestroy() {
@@ -106,7 +99,14 @@ class ExternalPlayerActivity : BaseMvpAppCompatActivity(), ExternalPlayerView {
         }
     }
 
-    override fun displayComposition(source: ExternalCompositionSource) {
+    override fun displayComposition(source: ExternalCompositionSource?) {
+        if (source == null) {
+            binding.tvComposition.text = null
+            binding.tvCompositionAuthor.text = null
+            binding.tvTotalTime.text = null
+            binding.ivCover.setImageResource(R.drawable.ic_music_placeholder)
+            return
+        }
         binding.tvComposition.text = CompositionHelper.formatCompositionName(source.title, source.displayName)
         binding.tvCompositionAuthor.text = FormatUtils.formatAuthor(source.artist, this)
         binding.tvTotalTime.text = FormatUtils.formatMilliseconds(source.duration)
@@ -114,7 +114,7 @@ class ExternalPlayerActivity : BaseMvpAppCompatActivity(), ExternalPlayerView {
         Components.getAppComponent()
             .imageLoader()
             .displayImageInReusableTarget(
-                binding.ivMusicIcon,
+                binding.ivCover,
                 source,
                 R.drawable.ic_music_placeholder
             )
@@ -164,91 +164,28 @@ class ExternalPlayerActivity : BaseMvpAppCompatActivity(), ExternalPlayerView {
         }
     }
 
-    override fun showSpeedChangeFeatureVisible(visible: Boolean) {
+    override fun showSpeedVisible(visible: Boolean) {
         binding.tvPlaybackSpeed.visibility = if (visible) View.VISIBLE else View.GONE
     }
 
-    override fun onVolumeChanged(volume: VolumeState) {
-        val volumePercent = 100 * volume.getVolume() / volume.max
+    override fun showVolumeState(volume: Long) {
+        val volumeState = VolumeState.from(volume)
+        val volumePercent = 100 * volumeState.getVolume() / volumeState.getMaxVolume()
         binding.tvVolume.text = getString(R.string.percentage_template, volumePercent)
         binding.tvVolume.setSmallDrawableStart(getVolumeIcon(volumePercent))
     }
 
-    private fun createCompositionSource(uri: Uri?) {
+    override fun closeScreen() {
+        finish()
+    }
+
+    private fun onUriReceived(uri: Uri?) {
         if (uri == null) {
             Toast.makeText(this, R.string.no_enough_data_to_play, Toast.LENGTH_LONG).show()
             finish()
             return
         }
-        val builder = ExternalCompositionSource.Builder(uri)
-        sourceCreationDisposable = Single.fromCallable { builder }
-            .map(::readDataFromContentResolver)
-            .timeout(2, TimeUnit.SECONDS)
-            .map(::readDataFromFile)
-            .timeout(2, TimeUnit.SECONDS)
-            .subscribeOn(Schedulers.io())
-            .observeOn(AndroidSchedulers.mainThread())
-            .onErrorReturnItem(builder)
-            .subscribe { createdBuilder ->
-                presenter.onSourceForPlayingReceived(createdBuilder.build())
-            }
+        presenter.onFileReferenceReceived(UriFileReference(uri))
     }
 
-    private fun readDataFromContentResolver(builder: ExternalCompositionSource.Builder): ExternalCompositionSource.Builder {
-        var displayName: String? = null
-        var size: Long = 0
-        try {
-            contentResolver.query(
-                builder.uri,
-                arrayOf(MediaStore.Audio.Media.DISPLAY_NAME, MediaStore.Audio.Media.SIZE),
-                null,
-                null,
-                null
-            ).use { cursor ->
-                val cursorWrapper = CursorWrapper(cursor)
-                if (cursor != null && cursor.moveToFirst()) {
-                    displayName = cursorWrapper.getString(MediaStore.Audio.Media.DISPLAY_NAME)
-                    size = cursorWrapper.getLong(MediaStore.Audio.Media.SIZE)
-                }
-            }
-        } catch (ignored: Exception) {}
-        return builder.setDisplayName(if (displayName == null) "unknown name" else displayName)
-            .setSize(size)
-    }
-
-    private fun readDataFromFile(
-        builder: ExternalCompositionSource.Builder
-    ): ExternalCompositionSource.Builder {
-        var title: String? = null
-        var artist: String? = null
-        var album: String? = null
-        var duration: Long = 0
-        var imageBytes: ByteArray? = null
-        var mmr: MediaMetadataRetriever? = null
-        try {
-            mmr = MediaMetadataRetriever()
-            mmr.setDataSource(this, builder.uri)
-            artist = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
-            title = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
-            album = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
-            val durationStr = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
-            try {
-                duration = durationStr!!.toLong()
-            } catch (ignored: NumberFormatException) { }
-            val coverSize = resources.getInteger(R.integer.icon_image_size)
-            imageBytes = ImageUtils.downscaleImageBytes(mmr.embeddedPicture, coverSize)
-        } catch (ignored: Exception) {
-        } finally {
-            if (mmr != null) {
-                try {
-                    mmr.release()
-                } catch (ignored: IOException) {}
-            }
-        }
-        return builder.setTitle(title)
-            .setArtist(artist)
-            .setAlbum(album)
-            .setDuration(duration)
-            .setImageBytes(imageBytes)
-    }
 }

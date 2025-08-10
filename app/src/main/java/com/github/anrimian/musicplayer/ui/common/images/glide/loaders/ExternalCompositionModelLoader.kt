@@ -1,46 +1,49 @@
-package com.github.anrimian.musicplayer.ui.common.images.glide.loaders;
+package com.github.anrimian.musicplayer.ui.common.images.glide.loaders
 
-import android.content.Context;
-import android.graphics.Bitmap;
+import android.content.Context
+import android.graphics.Bitmap
+import android.media.MediaMetadataRetriever
+import com.bumptech.glide.Priority
+import com.bumptech.glide.load.data.DataFetcher
+import com.github.anrimian.musicplayer.R
+import com.github.anrimian.musicplayer.ui.common.images.glide.util.AppModelLoader
+import com.github.anrimian.musicplayer.ui.common.images.models.UriCompositionImage
+import com.github.anrimian.musicplayer.ui.utils.ImageUtils
+import java.io.IOException
 
-import androidx.annotation.NonNull;
+class ExternalCompositionModelLoader(
+    private val context: Context,
+) : AppModelLoader<UriCompositionImage, Bitmap>() {
 
-import com.bumptech.glide.Priority;
-import com.bumptech.glide.load.data.DataFetcher;
-import com.github.anrimian.musicplayer.R;
-import com.github.anrimian.musicplayer.data.models.composition.source.ExternalCompositionSource;
-import com.github.anrimian.musicplayer.ui.common.images.glide.util.AppModelLoader;
-import com.github.anrimian.musicplayer.ui.common.images.models.UriCompositionImage;
-import com.github.anrimian.musicplayer.ui.utils.ImageUtils;
-
-public class ExternalCompositionModelLoader extends AppModelLoader<UriCompositionImage, Bitmap> {
-
-    private final Context context;
-
-    public ExternalCompositionModelLoader(Context context) {
-        this.context = context;
+    override fun getModelKey(uriCompositionImage: UriCompositionImage): Any {
+        return uriCompositionImage
     }
 
-    @Override
-    protected Object getModelKey(UriCompositionImage uriCompositionImage) {
-        return uriCompositionImage;
-    }
-
-    @Override
-    protected void loadData(UriCompositionImage uriCompositionImage,
-                            @NonNull Priority priority,
-                            @NonNull DataFetcher.DataCallback<? super Bitmap> callback) {
+    override fun loadData(
+        uriCompositionImage: UriCompositionImage,
+        priority: Priority,
+        callback: DataFetcher.DataCallback<in Bitmap>,
+    ) {
+        var mmr: MediaMetadataRetriever? = null
         try {
-            ExternalCompositionSource source = uriCompositionImage.getSource();
-            byte[] imageBytes = source.getImageBytes();
-            Bitmap bitmap = null;
+            mmr = MediaMetadataRetriever()
+            mmr.setDataSource(context, uriCompositionImage.uri)
+            val imageBytes = mmr.embeddedPicture
+
+            var bitmap: Bitmap? = null
             if (imageBytes != null) {
-                int coverSize = context.getResources().getInteger(R.integer.icon_image_full_size);
-                bitmap = ImageUtils.decodeBitmap(imageBytes, coverSize);
+                val coverSize = context.resources.getInteger(R.integer.icon_image_full_size)
+                bitmap = ImageUtils.decodeBitmap(imageBytes, coverSize)
             }
-            callback.onDataReady(bitmap);
-        } catch (Exception e) {
-            callback.onLoadFailed(e);
+            callback.onDataReady(bitmap)
+        } catch (e: Exception) {
+            callback.onLoadFailed(e)
+        } finally {
+            if (mmr != null) {
+                try {
+                    mmr.release()
+                } catch (ignored: IOException) {}
+            }
         }
     }
 

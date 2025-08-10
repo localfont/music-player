@@ -6,7 +6,8 @@ import android.content.DialogInterface
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
-import androidx.core.view.ViewCompat
+import android.view.ViewGroup
+import androidx.core.view.WindowCompat
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
@@ -21,7 +22,7 @@ import com.github.anrimian.musicplayer.ui.main.setup.SetupFragment
 import com.github.anrimian.musicplayer.ui.player_screen.PlayerFragment
 import com.github.anrimian.musicplayer.ui.utils.AndroidUtils
 import com.github.anrimian.musicplayer.ui.utils.ViewUtils
-import com.github.anrimian.musicplayer.ui.utils.fragments.BackButtonListener
+import com.github.anrimian.musicplayer.ui.utils.applyHorizontalInsets
 import com.github.anrimian.musicplayer.ui.utils.fragments.safeShow
 
 class MainActivity : BaseAppCompatActivity() {
@@ -40,16 +41,18 @@ class MainActivity : BaseAppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         Components.getAppComponent().themeController().applyCurrentTheme(this)
         super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
-        //trick to fix internal id issue in ViewPager2.
-        //Delete after this issue will be solved: https://issuetracker.google.com/issues/185820237
-        //Solution is taken from https://stackoverflow.com/a/59989710/5541688
-        //counter reduced from 1000 to 100, return back if fix won't help
+        // trick to fix internal id issue in ViewPager2.
+        // Delete after this issue will be solved: https://issuetracker.google.com/issues/185820237
+        // Solution is taken from https://stackoverflow.com/a/59989710/5541688
         for (i in 0..98) {
-            ViewCompat.generateViewId()
+            View.generateViewId()
         }
 
         setContentView(R.layout.activity_main)
+
+        findViewById<ViewGroup>(R.id.main_activity_container).applyHorizontalInsets()
 
         val loggerRepository = Components.getAppComponent().loggerRepository()
         val wasCriticalFatalError = loggerRepository.wasCriticalFatalError()
@@ -75,21 +78,13 @@ class MainActivity : BaseAppCompatActivity() {
         val fragment = supportFragmentManager.findFragmentById(R.id.main_activity_container)
         if (fragment is PlayerFragment) {
             if (getOpenPlayerPanelArg(intent)) {
-                fragment.openPlayerPanel() //non-smooth update, why...
+                fragment.openPlayerPanel()
             }
             val playlistUri = getPlaylistArg(intent)
             if (playlistUri != null) {
                 fragment.openImportPlaylistScreen(playlistUri)
             }
         }
-    }
-
-    override fun onBackPressed() {
-        val fragment = supportFragmentManager.findFragmentById(R.id.main_activity_container)
-        if (fragment is BackButtonListener && fragment.onBackPressed()) {
-            return
-        }
-        super.onBackPressed()
     }
 
     override fun onStop() {

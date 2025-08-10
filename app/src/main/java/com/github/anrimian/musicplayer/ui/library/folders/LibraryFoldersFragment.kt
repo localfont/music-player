@@ -17,7 +17,7 @@ import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.github.anrimian.filesync.models.state.file.FileSyncState
+import com.github.anrimian.fsync.models.state.file.FileSyncState
 import com.github.anrimian.musicplayer.Constants.Arguments.HIGHLIGHT_COMPOSITION_ID
 import com.github.anrimian.musicplayer.Constants.Arguments.ID_ARG
 import com.github.anrimian.musicplayer.Constants.Tags
@@ -35,6 +35,8 @@ import com.github.anrimian.musicplayer.domain.models.folders.IgnoredFolder
 import com.github.anrimian.musicplayer.domain.models.order.Order
 import com.github.anrimian.musicplayer.domain.models.order.OrderType
 import com.github.anrimian.musicplayer.domain.models.utils.ListPosition
+import com.github.anrimian.musicplayer.ui.common.applyFabBottomInsets
+import com.github.anrimian.musicplayer.ui.common.applyLibraryProgressViewOffset
 import com.github.anrimian.musicplayer.ui.common.dialogs.composition.showCompositionPopupMenu
 import com.github.anrimian.musicplayer.ui.common.dialogs.input.InputTextDialogFragment
 import com.github.anrimian.musicplayer.ui.common.dialogs.shareComposition
@@ -56,17 +58,17 @@ import com.github.anrimian.musicplayer.ui.library.common.library.BaseLibraryPres
 import com.github.anrimian.musicplayer.ui.library.common.order.SelectOrderDialogFragment
 import com.github.anrimian.musicplayer.ui.library.folders.adapter.MusicFileSourceAdapter
 import com.github.anrimian.musicplayer.ui.playlist_screens.choose.ChoosePlayListDialogFragment
-import com.github.anrimian.musicplayer.ui.playlist_screens.choose.newChoosePlayListDialogFragment
 import com.github.anrimian.musicplayer.ui.settings.folders.ExcludedFoldersFragment
 import com.github.anrimian.musicplayer.ui.sleep_timer.SleepTimerDialogFragment
+import com.github.anrimian.musicplayer.ui.utils.applyBottomInsets
 import com.github.anrimian.musicplayer.ui.utils.dialogs.ProgressDialogFragment
-import com.github.anrimian.musicplayer.ui.utils.fragments.BackButtonListener
 import com.github.anrimian.musicplayer.ui.utils.fragments.DialogFragmentDelayRunner
 import com.github.anrimian.musicplayer.ui.utils.fragments.DialogFragmentRunner
 import com.github.anrimian.musicplayer.ui.utils.fragments.navigation.FragmentNavigation
 import com.github.anrimian.musicplayer.ui.utils.fragments.navigation.FragmentNavigationListener
 import com.github.anrimian.musicplayer.ui.utils.fragments.safeShow
 import com.github.anrimian.musicplayer.ui.utils.getDimensionPixelSize
+import com.github.anrimian.musicplayer.ui.utils.isTabletLand
 import com.github.anrimian.musicplayer.ui.utils.slidr.SlidrPanel
 import com.github.anrimian.musicplayer.ui.utils.views.recycler_view.RecyclerViewUtils
 import com.github.anrimian.musicplayer.ui.utils.views.recycler_view.touch_helper.short_swipe.ShortSwipeCallback
@@ -79,7 +81,7 @@ import moxy.ktx.moxyPresenter
 /**
  * Created on 23.10.2017.
  */
-class LibraryFoldersFragment : BaseLibraryFragment(), LibraryFoldersView, BackButtonListener,
+class LibraryFoldersFragment : BaseLibraryFragment(), LibraryFoldersView,
     FragmentNavigationListener {
 
     companion object {
@@ -136,6 +138,15 @@ class LibraryFoldersFragment : BaseLibraryFragment(), LibraryFoldersView, BackBu
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        binding.fab.applyFabBottomInsets()
+        binding.progressStateView.applyLibraryProgressViewOffset(requireActivity())
+        binding.vgFileMenu.applyFabBottomInsets()
+        binding.vgMoveFileMenu.applyFabBottomInsets()
+        if (isTabletLand()) {
+            binding.rvFileSources.applyBottomInsets()
+        }
+
         toolbar = requireActivity().findViewById(R.id.toolbar)
         fragmentDisposable.add(toolbar.getSelectionModeObservable()
             .subscribe(this::onSelectionModeChanged)
@@ -268,20 +279,38 @@ class LibraryFoldersFragment : BaseLibraryFragment(), LibraryFoldersView, BackBu
         val inLockedSearchMode = requireArguments().getBoolean(LOCKED_SEARCH_MODE)
         presenter.onFragmentDisplayed(inLockedSearchMode)
         val act = requireActivity()
-        val toolbar: AdvancedToolbar = act.findViewById(R.id.toolbar)
-        if (inLockedSearchMode) {
-            toolbar.setSearchLocked(true)
-        } else {
-            toolbar.setupSearch(presenter::onSearchTextChanged)
-            if (requireArguments().getBoolean(LAUNCHED_SEARCH_MODE)) {
-                toolbar.setSearchLocked(false)
+        act.findViewById<AdvancedToolbar>(R.id.toolbar).setup {
+            subtitle = toolbar.getSubtitle()
+            titleClickListener = toolbar.getTitleClickListener()
+            if (inLockedSearchMode) {
+                isSearchLocked = true
+            } else {
+                val searchText = if (requireArguments().getBoolean(LAUNCHED_SEARCH_MODE)) {
+                    configSearchText
+                } else {
+                    null
+                }
+                setupSearch(
+                    textChangeListener = presenter::onSearchTextChanged,
+                    exitListener = { setSearchModeActive(false) },
+                    text = searchText
+                )
+                if (requireArguments().getBoolean(LAUNCHED_SEARCH_MODE)) {
+                    isSearchLocked = false
+                }
             }
+            setupSelectionModeMenu(
+                R.menu.library_folders_selection_menu,
+                ::onActionModeItemClicked,
+                presenter::onExitSelectionModeClicked
+            )
+            setupOptionsMenu(R.menu.library_files_menu, ::onOptionsItemClicked)
         }
-        toolbar.setupSelectionModeMenu(R.menu.library_folders_selection_menu, this::onActionModeItemClicked)
-        toolbar.setupOptionsMenu(R.menu.library_files_menu, this::onOptionsItemClicked)
     }
 
     override fun getCoordinatorLayout() = binding.listContainer
+
+    override fun getFloatingActionButton() = binding.fab
 
     override fun updateList(list: List<FileSource>) {
         adapter.submitList(list)
@@ -335,26 +364,10 @@ class LibraryFoldersFragment : BaseLibraryFragment(), LibraryFoldersView, BackBu
         FragmentNavigation.from(parentFragmentManager).goBack()
     }
 
-    override fun onBackPressed(): Boolean {
-        if (toolbar.isInActionMode()) {
-            presenter.onSelectionModeBackPressed()
-            return true
-        }
-        if (toolbar.isInSearchMode() && !requireArguments().getBoolean(LOCKED_SEARCH_MODE)) {
-            setSearchModeActive(false)
-            return true
-        }
-        if (getFolderId() != null) {
-            presenter.onBackPathButtonClicked()
-            return true
-        }
-        return false
-    }
-
     override fun showSelectPlayListForFolderDialog(folder: FolderFileSource) {
         val bundle = Bundle()
         bundle.putLong(ID_ARG, folder.id)
-        val dialog = newChoosePlayListDialogFragment(bundle)
+        val dialog = ChoosePlayListDialogFragment.newInstance(bundle)
         choosePlaylistForFolderDialogRunner.show(dialog)
     }
 
@@ -391,17 +404,16 @@ class LibraryFoldersFragment : BaseLibraryFragment(), LibraryFoldersView, BackBu
 
     override fun showDeleteCompositionError(errorCommand: ErrorCommand) {
         deletingErrorHandler.handleError(errorCommand) {
-            MessagesUtils.makeSnackbar(
-                binding.listContainer,
+            binding.listContainer.showSnackbar(
                 getString(R.string.delete_composition_error_template, errorCommand.message),
-                Snackbar.LENGTH_SHORT
-            ).show()
+                anchorView = binding.fab
+            )
         }
     }
 
     override fun showDeleteCompositionMessage(compositionsToDelete: List<DeletedComposition>) {
         val text = MessagesUtils.getDeleteCompleteMessage(requireActivity(), compositionsToDelete)
-        MessagesUtils.makeSnackbar(binding.listContainer, text, Snackbar.LENGTH_SHORT).show()
+        binding.listContainer.showSnackbar(text, anchorView = binding.fab)
     }
 
     override fun sendCompositions(compositions: List<Composition>) {
@@ -494,9 +506,13 @@ class LibraryFoldersFragment : BaseLibraryFragment(), LibraryFoldersView, BackBu
 
     override fun showAddedIgnoredFolderMessage(folder: IgnoredFolder) {
         val message = getString(R.string.ignored_folder_added, folder.relativePath)
-        MessagesUtils.makeSnackbar(binding.listContainer, message, Snackbar.LENGTH_LONG)
-            .setAction(R.string.cancel, presenter::onRemoveIgnoredFolderClicked)
-            .show()
+        binding.listContainer.showSnackbar(
+            message,
+            duration = Snackbar.LENGTH_LONG,
+            anchorView = binding.fab,
+            actionText = getString(R.string.cancel),
+            action = presenter::onRemoveIgnoredFolderClicked
+        )
     }
 
     override fun hideProgressDialog() {
@@ -683,7 +699,8 @@ class LibraryFoldersFragment : BaseLibraryFragment(), LibraryFoldersView, BackBu
     private fun showEditorRequestDeniedMessage() {
         binding.listContainer.showSnackbar(
             R.string.android_r_edit_file_permission_denied,
-            Snackbar.LENGTH_LONG
+            Snackbar.LENGTH_LONG,
+            binding.fab
         )
     }
 

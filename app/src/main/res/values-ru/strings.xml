@@ -2,7 +2,6 @@
 <resources>
 
     <string name="open_drawer">Открыть боковое меню</string>
-    <string name="close_drawer">Закрыть блоковое меню</string>
     <string name="try_again">Попробовать снова</string>
     <string name="can_not_work_without_file_permission">Приложение не может работать без разрешения на доступ к файлам</string>
     <string name="close">Закрыть</string>

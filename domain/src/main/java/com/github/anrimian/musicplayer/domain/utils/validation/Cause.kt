@@ -1,6 +1,6 @@
-package com.github.anrimian.musicplayer.domain.utils.validation;
+package com.github.anrimian.musicplayer.domain.utils.validation
 
-public enum Cause {
+enum class Cause {
     EMPTY_NAME,
     TOO_LONG_NAME
 }

@@ -1,47 +1,31 @@
-package com.github.anrimian.musicplayer.ui.player_screen.view.wrappers;
+package com.github.anrimian.musicplayer.ui.player_screen.view.wrappers
 
-import android.view.View;
+import android.view.View
+import com.github.anrimian.musicplayer.ui.utils.applyBottomHeightInsets
 
-import com.github.anrimian.musicplayer.domain.utils.functions.Callback;
-import com.github.anrimian.musicplayer.ui.common.toolbar.AdvancedToolbar;
+class TabletPlayerPanelWrapper(
+    panelView: View,
+    toolbarNavigationWrapper: ToolbarNavigationWrapper,
+    bottomSheetStateListener: (Boolean) -> Unit
+) : PlayerPanelWrapper() {
 
+    init {
+        bottomSheetStateListener(false)
+        toolbarNavigationWrapper.onBottomSheetStateChanged(false)
 
-public class TabletPlayerPanelWrapper implements PlayerPanelWrapper {
-
-    public TabletPlayerPanelWrapper(View view,
-                                    AdvancedToolbar toolbar,
-                                    Callback<Boolean> bottomSheetStateListener) {
-        bottomSheetStateListener.call(false);
-        toolbar.setContentVisible(true);
+        panelView.applyBottomHeightInsets()
     }
 
-    @Override
-    public boolean isBottomPanelExpanded() {
-        return false;
+    override fun isBottomPanelExpanded(): Boolean = false
+
+    override fun collapseBottomPanelSmoothly() {}
+
+    override fun collapseBottomPanelSmoothly(doOnCollapse: () -> Unit) {
+        doOnCollapse.invoke()
     }
 
-    @Override
-    public void collapseBottomPanelSmoothly() {
+    override fun collapseBottomPanel() {}
 
-    }
+    override fun expandBottomPanel(jumpToState: Boolean) {}
 
-    @Override
-    public void collapseBottomPanelSmoothly(Runnable doOnCollapse) {
-        doOnCollapse.run();
-    }
-
-    @Override
-    public void collapseBottomPanel() {
-
-    }
-
-    @Override
-    public void expandBottomPanel() {
-
-    }
-
-    @Override
-    public void openPlayerPanel() {
-
-    }
 }

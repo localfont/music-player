@@ -48,3 +48,40 @@ class LazyBehaviorSubject<T : Any>(
     fun onNext(value: T) = subject.onNext(value)
     fun getValue(defaultValue: T) = observable.first(defaultValue)
 }
+
+/**
+ * Util to fix kotlin casting issues
+ */
+inline fun <U : Any, T : Any> Observable<T>.collectIntoList(
+    crossinline collector: (ArrayList<U>, T) -> Unit
+): Single<List<U>> {
+    return collectInto(ArrayList<U>() as List<U>, { c, i -> collector(c as ArrayList<U> , i) })
+}
+
+fun <T : Any> Observable<List<T>>.firstListItemOrComplete(): Observable<T> {
+    return takeWhile { list -> list.isNotEmpty() }.map { list -> list[0] }
+}
+
+fun <T : Any> Observable<T>.attachGateObservable(
+    gateObservable: Observable<Boolean>
+): Observable<T> {
+    var lastBlockedItem: T? = null
+    return Observable.combineLatest(
+        this,
+        gateObservable,
+        { source, isGateBlocked ->
+            Observable.create { emitter ->
+                if (isGateBlocked) {
+                    lastBlockedItem = source
+                } else {
+                    if (lastBlockedItem != null) {
+                        emitter.onNext(lastBlockedItem!!)
+                        lastBlockedItem = null
+                    } else {
+                        emitter.onNext(source)
+                    }
+                }
+            }
+        }
+    ).flatMap { o -> o }
+}

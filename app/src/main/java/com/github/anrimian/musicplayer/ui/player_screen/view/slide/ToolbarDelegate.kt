@@ -1,45 +1,33 @@
-package com.github.anrimian.musicplayer.ui.player_screen.view.slide;
+package com.github.anrimian.musicplayer.ui.player_screen.view.slide
 
-import android.animation.ArgbEvaluator;
-import android.view.Window;
+import android.animation.ArgbEvaluator
+import com.github.anrimian.musicplayer.R
+import com.github.anrimian.musicplayer.ui.common.toolbar.AdvancedToolbar
+import com.github.anrimian.musicplayer.ui.player_screen.view.wrappers.ToolbarNavigationWrapper
+import com.github.anrimian.musicplayer.ui.utils.attrColor
+import com.github.anrimian.musicplayer.ui.utils.views.delegate.SlideDelegate
 
-import com.github.anrimian.musicplayer.R;
-import com.github.anrimian.musicplayer.ui.common.toolbar.AdvancedToolbar;
-import com.github.anrimian.musicplayer.ui.utils.views.delegate.SlideDelegate;
+class ToolbarDelegate(
+    private val toolbar: AdvancedToolbar,
+    private val toolbarNavigationWrapper: ToolbarNavigationWrapper
+) : SlideDelegate {
+    
+    private val startStatusBarColor = toolbar.context.attrColor(R.attr.actionModeStatusBarColor)
+    private val endStatusBarColor = toolbar.context.attrColor(R.attr.actionModeStatusBarColor)
 
-import static com.github.anrimian.musicplayer.ui.utils.AndroidUtils.getColorFromAttr;
-import static com.github.anrimian.musicplayer.ui.utils.AndroidUtils.setStatusBarColor;
-
-public class ToolbarDelegate implements SlideDelegate {
-
-    private final int startStatusBarColor;
-    private final int endStatusBarColor;
-
-    private final AdvancedToolbar toolbar;
-    private final Window window;
-
-    public ToolbarDelegate(AdvancedToolbar toolbar,
-                           Window window) {
-        this.toolbar = toolbar;
-        this.window = window;
-
-        startStatusBarColor = getColorFromAttr(window.getContext(), R.attr.actionModeStatusBarColor);
-        endStatusBarColor = getColorFromAttr(toolbar.getContext(), android.R.attr.statusBarColor);
-    }
-
-    @Override
-    public void onSlide(float slideOffset) {
-        toolbar.setControlButtonProgress(slideOffset);
+    override fun onSlide(slideOffset: Float) {
+        toolbarNavigationWrapper.onBottomSheetSlided(slideOffset)
 
         if (toolbar.isInActionMode()) {
-            int startColor = getColorFromAttr(toolbar.getContext(), R.attr.actionModeTextColor);
-            int endColor = getColorFromAttr(toolbar.getContext(), R.attr.toolbarTextColorPrimary);
-            ArgbEvaluator argbEvaluator = new ArgbEvaluator();
-            int color = (int) argbEvaluator.evaluate(slideOffset, startColor, endColor);
-            toolbar.setControlButtonColor(color);
+            val startColor = toolbar.context.attrColor(R.attr.actionModeTextColor)
+            val endColor = toolbar.context.attrColor(R.attr.toolbarTextColorPrimary)
+            val argbEvaluator = ArgbEvaluator()
+            val color = argbEvaluator.evaluate(slideOffset, startColor, endColor) as Int
+            toolbar.setControlButtonColor(color)
 
-            int statusBarColor = (int) argbEvaluator.evaluate(slideOffset, startStatusBarColor, endStatusBarColor);
-            setStatusBarColor(window, statusBarColor);
+            val statusBarColor = argbEvaluator.evaluate(slideOffset, startStatusBarColor, endStatusBarColor) as Int
+            toolbar.setStatusBarColor(statusBarColor)
         }
     }
+    
 }

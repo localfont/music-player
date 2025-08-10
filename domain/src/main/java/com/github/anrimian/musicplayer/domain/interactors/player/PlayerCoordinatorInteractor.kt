@@ -4,10 +4,11 @@ import com.github.anrimian.musicplayer.domain.models.composition.source.Composit
 import com.github.anrimian.musicplayer.domain.models.player.PlayerState
 import com.github.anrimian.musicplayer.domain.models.player.events.PlayerEvent
 import com.github.anrimian.musicplayer.domain.repositories.UiStateRepository
-import com.github.anrimian.musicplayer.domain.utils.functions.Optional
+import com.github.anrimian.musicplayer.domain.utils.functions.Opt
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.subjects.BehaviorSubject
+import java.util.LinkedList
 
 class PlayerCoordinatorInteractor(
     private val playerInteractor: PlayerInteractor,
@@ -15,11 +16,11 @@ class PlayerCoordinatorInteractor(
 ) {
 
     private val preparedSourcesMap = HashMap<PlayerType, SourceInfo>()
+    private val cleanupCallbacksMap = HashMap<PlayerType, () -> Unit>()
 
     private var activePlayerType: PlayerType? = null
-    private val activePlayerTypeSubject = BehaviorSubject.createDefault<Optional<PlayerType>>(
-        Optional()
-    )
+    private val activePlayerTypeSubject = BehaviorSubject.createDefault<Opt<PlayerType>>(Opt())
+    private val playerActivationHistory = LinkedList<PlayerType>()
 
     fun play(playerType: PlayerType, delay: Long = 0L) {
         applyPlayerType(playerType)
@@ -64,10 +65,25 @@ class PlayerCoordinatorInteractor(
         }
     }
 
-    fun reset(playerType: PlayerType) {
-        preparedSourcesMap.remove(playerType)
-        if (playerType == activePlayerType) {
+    fun reset(playerType: PlayerType, fallbackToPrevious: Boolean = false) {
+        if (activePlayerType == null) {
             playerInteractor.reset()
+            return
+        }
+        preparedSourcesMap.remove(playerType)
+        if (activePlayerType == playerType) {
+            playerActivationHistory.removeLast()
+
+            cleanupCallbacksMap[playerType]?.invoke()
+
+            val prevPlayerType = playerActivationHistory.lastOrNull()
+            if (prevPlayerType == null || !fallbackToPrevious) {
+                activePlayerType = null
+                activePlayerTypeSubject.onNext(Opt())
+                playerInteractor.reset()
+            } else {
+                applyPlayerType(prevPlayerType)
+            }
         }
     }
 
@@ -118,6 +134,10 @@ class PlayerCoordinatorInteractor(
         if (activePlayerType == playerType) {
             playerInteractor.setPlaybackSpeed(speed)
         }
+    }
+
+    fun registerCleanupCallback(playerType: PlayerType, callback: () -> Unit) {
+        cleanupCallbacksMap[playerType] = callback
     }
 
     fun getPlayerEventsObservable(playerType: PlayerType): Observable<PlayerEvent> {
@@ -172,22 +192,34 @@ class PlayerCoordinatorInteractor(
 
     @Suppress("CheckResult")
     private fun applyPlayerType(playerType: PlayerType) {
-        if (activePlayerType != playerType) {
+        if (activePlayerType == playerType) {
+            return
+        }
+        if (activePlayerType != null) {
             playerInteractor.pause()
             val oldSource = preparedSourcesMap[activePlayerType]
             if (oldSource != null) {
                 playerInteractor.getTrackPosition()
                     .subscribe { position -> oldSource.trackPosition = position }
             }
-
-            initializePlayerType(playerType)
-            activePlayerType = playerType
-            activePlayerTypeSubject.onNext(Optional(activePlayerType))
-
-            val sourceInfo = preparedSourcesMap[playerType]
-            if (sourceInfo != null) {
-                playerInteractor.prepareToPlay(sourceInfo.source, sourceInfo.trackPosition)
+            cleanupCallbacksMap[activePlayerType]?.invoke()
+        } else {
+            cleanupCallbacksMap.forEach { (type, callback) ->
+                if (type != playerType) {
+                    callback.invoke()
+                }
             }
+        }
+
+        initializePlayerType(playerType)
+        activePlayerType = playerType
+        playerActivationHistory.remove(playerType)
+        playerActivationHistory.add(playerType)
+        activePlayerTypeSubject.onNext(Opt(activePlayerType))
+
+        val sourceInfo = preparedSourcesMap[playerType]
+        if (sourceInfo != null) {
+            playerInteractor.prepareToPlay(sourceInfo.source, sourceInfo.trackPosition)
         }
     }
 

@@ -1,6 +1,6 @@
 package com.github.anrimian.musicplayer.ui.library.common.compositions
 
-import com.github.anrimian.filesync.SyncInteractor
+import com.github.anrimian.fsync.SyncInteractor
 import com.github.anrimian.musicplayer.domain.Constants
 import com.github.anrimian.musicplayer.domain.interactors.player.LibraryPlayerInteractor
 import com.github.anrimian.musicplayer.domain.interactors.playlists.PlayListsInteractor
@@ -154,7 +154,7 @@ abstract class BaseLibraryCompositionsPresenter<C : Composition, V : BaseLibrary
         performAddToPlaylist(compositionsForPlayList, playList, ::onAddingToPlayListCompleted)
     }
 
-    fun onSelectionModeBackPressed() {
+    fun onExitSelectionModeClicked() {
         closeSelectionMode()
     }
 

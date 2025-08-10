@@ -2,7 +2,6 @@
 <resources>
 
     <string name="open_drawer">Відкрити бокове меню</string>
-    <string name="close_drawer">Закрити бокове меню</string>
     <string name="try_again">Спробувати знову</string>
     <string name="can_not_work_without_file_permission">Додаток не може працювати без дозволу до доступу до файлів</string>
     <string name="close">Закрити</string>

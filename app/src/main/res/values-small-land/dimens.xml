@@ -1,8 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <dimen name="bottom_sheet_content_margin">8dp</dimen>
-    <dimen name="play_button_expand_margin">4dp</dimen>
-    <dimen name="play_button_expand_size">36dp</dimen>
     <dimen name="button_expand_size">26dp</dimen>
 
     <!--content margins-->
@@ -23,8 +20,15 @@
     <dimen name="dialog_button_margin_vertical">4dp</dimen>
     <dimen name="dialog_button_margin_horizontal">6dp</dimen>
 
+    <!--player bottom sheet-->
+    <dimen name="play_button_expand_size">36dp</dimen>
+
     <!--swipe panel-->
     <dimen name="swipe_panel_padding_end">4dp</dimen>
     <dimen name="swipe_panel_text_top_padding">1dp</dimen>
+
+    <!--play queue-->
+    <integer name="play_queue_scroll_window_top_offset">0</integer>
+    <integer name="play_queue_scroll_window_bottom_offset">0</integer>
 
 </resources>

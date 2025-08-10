@@ -27,10 +27,10 @@ fun showVolumePopup(
     binding.btnVolumeDown.onVolumeHold { systemMusicController.changeVolumeBy( -1) }
 
     val screenMargin = context.getDimensionPixelSize(R.dimen.popup_screen_margin)
-    val menu = AppPopupWindow.showPopupWindow(anchorView, binding.root, Gravity.END, gravity, screenMargin)
+    val menu = AppPopupWindow.showPopupWindow(anchorView, binding.root, screenMargin, Gravity.END, gravity)
 
-    val disposable = systemMusicController.volumeStateObservable.subscribe { volume ->
-        binding.sbVolume.max = volume.max
+    val disposable = systemMusicController.getVolumeStateObservable().subscribe { volume ->
+        binding.sbVolume.max = volume.getMaxVolume()
         binding.sbVolume.progress = volume.getVolume()
     }
     menu?.setOnDismissListener {

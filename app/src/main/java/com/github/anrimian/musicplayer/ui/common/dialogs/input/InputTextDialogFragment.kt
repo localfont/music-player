@@ -170,7 +170,7 @@ class InputTextDialogFragment : DialogFragment() {
     }
 
     private fun onCompleteButtonClicked() {
-        val text = editText.text.toString()
+        val text = editText.text.toString().trim()
         if (!TextUtils.equals(text, requireArguments().getString(EDIT_TEXT_VALUE))) {
             onCompleteListener?.invoke(text)
             complexCompleteListener?.invoke(text, requireArguments().getBundle(EXTRA_DATA_ARG)!!)

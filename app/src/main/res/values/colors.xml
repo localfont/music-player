@@ -29,9 +29,8 @@
     <color name="list_item_bottom_background_light">#A0A0A0</color>
 
     <color name="colorPrimaryDarkSecondary">#f5f5f5</color>
-    <color name="selectionStatusBarColor">#848282</color>
+    <color name="actionModeToolbarColor">#848282</color>
 
-    <!--too light on pixel 7. check pixel 3a and nexus 5x-->
     <color name="color_control_highlight">#1f000000</color>
     <color name="color_control_highlight_light">#80BDBDBD</color>
 
@@ -43,6 +42,8 @@
 
     <color name="chip_background">#D5D2D2</color>
     <color name="chip_background_dark">#6A6868</color>
+
+    <color name="nav_bar_horizontal_background">#ECEAEA</color>
 
     <!-- leave for future ideas  -->
 <!--    <color name="player_panel_background">#F6F6F6</color>-->
@@ -87,6 +88,8 @@
 
     <color name="snackbar_color_dark">#ffff</color>
 
+    <color name="nav_bar_horizontal_background_dark">@color/dark_background_level_0</color>
+
     <!--other-->
     <color name="startShadowColor">#00000000</color>
     <color name="endShadowColor">#33000000</color>
@@ -124,6 +127,7 @@
     <color name="colorPrimaryWhiteGray">#848282</color>
     <color name="colorAccentBlue">#2196F3</color>
     <color name="colorAccentBlueContrast">#64B5F6</color>
+    <color name="translucent_gray">#80000000</color>
 
     <!--dark theme(orange)-->
     <color name="color_orange_dark_accent">#e65100</color>

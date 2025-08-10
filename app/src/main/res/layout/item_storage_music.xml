@@ -14,7 +14,7 @@
         android:layout_marginStart="@dimen/content_horizontal_margin"
         android:layout_marginTop="@dimen/list_vertical_margin"
         app:layout_constraintEnd_toStartOf="@+id/btnActionsMenu"
-        app:layout_constraintStart_toEndOf="@+id/ivMusicIcon"
+        app:layout_constraintStart_toEndOf="@+id/ivCover"
         app:layout_constraintTop_toTopOf="parent"
         tools:text="cocompositioncompositioncompositioncompositioncompositioncompositioncompositioncompositioncompositioncompositioncompositionmposition" />
 
@@ -38,7 +38,7 @@
         app:layout_constraintTop_toBottomOf="@id/tv_additional_info" />
 
     <com.google.android.material.imageview.ShapeableImageView
-        android:id="@+id/ivMusicIcon"
+        android:id="@+id/ivCover"
         style="@style/ImageStyle.ItemImage"
         android:scaleType="centerCrop"
         android:layout_marginStart="@dimen/content_horizontal_margin"
@@ -53,20 +53,20 @@
         android:layout_height="24dp"
         android:contentDescription="@null"
         app:tint="@android:color/white"
-        app:layout_constraintStart_toStartOf="@id/ivMusicIcon"
-        app:layout_constraintEnd_toEndOf="@id/ivMusicIcon"
-        app:layout_constraintTop_toTopOf="@id/ivMusicIcon"
-        app:layout_constraintBottom_toBottomOf="@id/ivMusicIcon"
+        app:layout_constraintStart_toStartOf="@id/ivCover"
+        app:layout_constraintEnd_toEndOf="@id/ivCover"
+        app:layout_constraintTop_toTopOf="@id/ivCover"
+        app:layout_constraintBottom_toBottomOf="@id/ivCover"
         tools:srcCompat="@drawable/ic_play"/>
 
-    <com.github.anrimian.musicplayer.ui.utils.views.progress_bar.ProgressView
+    <com.github.anrimian.musicplayer.ui.common.progress.ProgressView
         android:id="@+id/pvFileState"
         android:layout_width="@dimen/file_sync_state_icon_size"
         android:layout_height="@dimen/file_sync_state_icon_size"
         android:layout_marginBottom="@dimen/file_sync_state_icon_margin"
         android:layout_marginEnd="@dimen/file_sync_state_icon_margin"
-        app:layout_constraintBottom_toBottomOf="@id/ivMusicIcon"
-        app:layout_constraintEnd_toEndOf="@id/ivMusicIcon"/>
+        app:layout_constraintBottom_toBottomOf="@id/ivCover"
+        app:layout_constraintEnd_toEndOf="@id/ivCover"/>
 
     <FrameLayout
         android:id="@+id/clickable_item"

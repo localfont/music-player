@@ -1,7 +1,6 @@
 <resources>
 
     <string name="open_drawer">Open drawer</string>
-    <string name="close_drawer">Close drawer</string>
     <string name="try_again">Try again</string>
     <string name="can_not_work_without_file_permission">Application can not work without file permission</string>
     <string name="close">Close</string>
@@ -295,6 +294,7 @@
     <string name="check_for_duplicates">Check playlist for duplicates before adding new compositions</string>
     <string name="more_template">…%d more</string>
     <string name="add_without_duplicates">Add without duplicates</string>
+
 
     <plurals name="compositions_count">
         <item quantity="one">%1$s song</item>

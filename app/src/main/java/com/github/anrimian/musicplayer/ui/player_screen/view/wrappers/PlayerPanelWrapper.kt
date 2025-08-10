@@ -1,16 +1,11 @@
-package com.github.anrimian.musicplayer.ui.player_screen.view.wrappers;
+package com.github.anrimian.musicplayer.ui.player_screen.view.wrappers
 
-public interface PlayerPanelWrapper {
+abstract class PlayerPanelWrapper {
 
-    boolean isBottomPanelExpanded();
+    abstract fun isBottomPanelExpanded(): Boolean
+    abstract fun collapseBottomPanel()
+    abstract fun collapseBottomPanelSmoothly()
+    abstract fun collapseBottomPanelSmoothly(doOnCollapse: () -> Unit)
+    abstract fun expandBottomPanel(jumpToState: Boolean)
 
-    void collapseBottomPanel();
-
-    void collapseBottomPanelSmoothly();
-
-    void collapseBottomPanelSmoothly(Runnable doOnCollapse);
-
-    void expandBottomPanel();
-
-    void openPlayerPanel();
 }
