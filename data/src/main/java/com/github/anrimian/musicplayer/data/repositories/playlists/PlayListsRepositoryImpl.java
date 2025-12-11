@@ -59,6 +59,7 @@ public class PlayListsRepositoryImpl implements PlayListsRepository {
     private final CompositionsDaoWrapper compositionsDao;
     private final PlayListsDaoWrapper playListsDao;
     private final PlaylistFilesStorage playlistFilesStorage;
+    private final Scheduler ioScheduler;
     private final Scheduler dbScheduler;
     private final Scheduler slowBgScheduler;
 
@@ -73,6 +74,7 @@ public class PlayListsRepositoryImpl implements PlayListsRepository {
                                    CompositionsDaoWrapper compositionsDao,
                                    PlayListsDaoWrapper playListsDao,
                                    PlaylistFilesStorage playlistFilesStorage,
+                                   Scheduler ioScheduler,
                                    Scheduler dbScheduler,
                                    Scheduler slowBgScheduler) {
         this.context = context;
@@ -81,6 +83,7 @@ public class PlayListsRepositoryImpl implements PlayListsRepository {
         this.compositionsDao = compositionsDao;
         this.playListsDao = playListsDao;
         this.playlistFilesStorage = playlistFilesStorage;
+        this.ioScheduler = ioScheduler;
         this.dbScheduler = dbScheduler;
         this.slowBgScheduler = slowBgScheduler;
     }
@@ -183,7 +186,7 @@ public class PlayListsRepositoryImpl implements PlayListsRepository {
             return Completable.complete();
         }
         return addCompositionsToPlayList(
-                asList(deletedItem.getComposition()),
+                asList(deletedItem),
                 deletedItemPlayListId,
                 deletedItemPosition,
                 false,
@@ -207,10 +210,12 @@ public class PlayListsRepositoryImpl implements PlayListsRepository {
     @Override
     public Completable moveItemInPlayList(long playlistId, int from, int to) {
         return Completable.fromAction(() -> {
-            playListsDao.moveItems(playlistId, from, to);
-            updatePlaylistCache(playlistId);
-            moveItemInStoragePlayList(playlistId, from, to);
-        }).subscribeOn(dbScheduler);
+            synchronized(this) {
+                playListsDao.moveItems(playlistId, from, to);
+                updatePlaylistCache(playlistId);
+                moveItemInStoragePlayList(playlistId, from, to);
+            }
+        }).subscribeOn(ioScheduler);
     }
 
     @Override

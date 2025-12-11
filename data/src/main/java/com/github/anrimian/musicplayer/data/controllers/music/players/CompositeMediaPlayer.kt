@@ -1,7 +1,6 @@
 package com.github.anrimian.musicplayer.data.controllers.music.players
 
-import androidx.media3.common.PlaybackException
-import androidx.media3.exoplayer.upstream.Loader
+import com.github.anrimian.musicplayer.data.controllers.music.players.exceptions.PlayerOutOfMemoryException
 import com.github.anrimian.musicplayer.domain.models.composition.content.CompositionContentSource
 import com.github.anrimian.musicplayer.domain.models.composition.content.RelaunchSourceException
 import com.github.anrimian.musicplayer.domain.models.composition.content.UnsupportedSourceException
@@ -20,12 +19,11 @@ class CompositeMediaPlayer(
     private var currentSoundBalance: SoundBalance,
 ): AppMediaPlayer {
 
-    private val startPlayerIndex = 0
-
     private val playerEventsSubject = PublishSubject.create<MediaPlayerEvent>()
     private val playerDisposable = CompositeDisposable()
 
-    private var currentPlayerIndex = startPlayerIndex
+    private var currentPlayerIndex = START_PLAYER_INDEX
+    private var nextPlayerIndex = currentPlayerIndex
     private var currentPlayer = createNewPlayerInstance(currentPlayerIndex)
     private val currentPlayerSubject = BehaviorSubject.createDefault(currentPlayer)
 
@@ -36,20 +34,35 @@ class CompositeMediaPlayer(
         source: CompositionContentSource,
         previousException: Exception?,
     ): Completable {
-        //reset player for new source
-        if (currentPlayerIndex != startPlayerIndex && source != currentSource) {
-            setPlayer(startPlayerIndex)
-        }
-        //workaround for android media player unsupported error case
-        var ex: Exception? = null
-        if (source == currentSource) {
-            ex = previousPlayerException
-            previousPlayerException = null
-        }
-        currentSource = source
-        return Single.fromCallable { currentPlayer }
-            .flatMapCompletable { player -> player.prepareToPlay(source, ex) }
-            .retry(this::switchPlayerOnError)
+        return Single.fromCallable {
+            if (source == currentSource) {
+                if (currentPlayerIndex != nextPlayerIndex) {
+                    // switch player to next one
+                    currentPlayerIndex = nextPlayerIndex
+                    setPlayer(currentPlayerIndex)
+                }
+            } else {
+                if (currentPlayerIndex == START_PLAYER_INDEX) {
+                    if (nextPlayerIndex != START_PLAYER_INDEX) {
+                        nextPlayerIndex = START_PLAYER_INDEX
+                    }
+                } else {
+                    // reset player for new source
+                    currentPlayerIndex = START_PLAYER_INDEX
+                    setPlayer(currentPlayerIndex)
+                }
+            }
+            currentPlayer
+        }.flatMapCompletable { player ->
+            //workaround for android media player unsupported error case
+            var ex: Exception? = null
+            if (source == currentSource) {
+                ex = previousPlayerException
+                previousPlayerException = null
+            }
+            currentSource = source
+            player.prepareToPlay(source, ex)
+        }.retry(this::prepareRelaunchOnError)
     }
 
     override fun stop() {
@@ -109,7 +122,6 @@ class CompositeMediaPlayer(
     }
 
     private fun setPlayer(index: Int) {
-        currentPlayerIndex = index
         currentPlayer.release()
         currentPlayer = createNewPlayerInstance(index)
         currentPlayerSubject.onNext(currentPlayer)
@@ -129,7 +141,7 @@ class CompositeMediaPlayer(
 
     private fun onPlayerEventReceived(event: MediaPlayerEvent) {
         val eventToEmit = if (
-            event is MediaPlayerEvent.Error && switchPlayerOnError(event.throwable)
+            event is MediaPlayerEvent.Error && prepareRelaunchOnError(event.throwable)
         ) {
             MediaPlayerEvent.Error(RelaunchSourceException(event.throwable))
         } else {
@@ -138,25 +150,19 @@ class CompositeMediaPlayer(
         playerEventsSubject.onNext(eventToEmit)
     }
 
-    private fun switchPlayerOnError(throwable: Throwable): Boolean {
-        if (throwable is UnsupportedSourceException || isOutOfMemoryError(throwable)) {
-            val newPlayerIndex = currentPlayerIndex + 1
-            //don't switch player when we reached end of available players
-            if (newPlayerIndex >= 0 && newPlayerIndex < mediaPlayers.size) {
+    private fun prepareRelaunchOnError(throwable: Throwable): Boolean {
+        if (throwable is UnsupportedSourceException || throwable is PlayerOutOfMemoryException) {
+            if (currentPlayerIndex >= 0 && currentPlayerIndex < mediaPlayers.lastIndex) {
                 previousPlayerException = throwable as Exception
-                setPlayer(newPlayerIndex)
+                nextPlayerIndex = currentPlayerIndex + 1
                 return true
             }
         }
         return false
     }
 
-    private fun isOutOfMemoryError(throwable: Throwable): Boolean {
-        if (throwable is PlaybackException) {
-            val cause = throwable.cause
-            return cause is Loader.UnexpectedLoaderException && cause.cause is OutOfMemoryError
-        }
-        return false
+    companion object {
+        private const val START_PLAYER_INDEX = 0
     }
 
 }

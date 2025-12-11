@@ -9,7 +9,7 @@ import androidx.recyclerview.widget.ConcatAdapter
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.github.anrimian.filesync.models.state.file.FileSyncState
+import com.github.anrimian.fsync.models.state.file.FileSyncState
 import com.github.anrimian.musicplayer.Constants
 import com.github.anrimian.musicplayer.Constants.Tags
 import com.github.anrimian.musicplayer.R
@@ -22,11 +22,14 @@ import com.github.anrimian.musicplayer.domain.models.composition.Composition
 import com.github.anrimian.musicplayer.domain.models.composition.CurrentComposition
 import com.github.anrimian.musicplayer.domain.models.composition.DeletedComposition
 import com.github.anrimian.musicplayer.domain.models.utils.ListPosition
+import com.github.anrimian.musicplayer.ui.common.applyFabBottomInsets
+import com.github.anrimian.musicplayer.ui.common.applyLibraryProgressViewOffset
 import com.github.anrimian.musicplayer.ui.common.dialogs.shareCompositions
 import com.github.anrimian.musicplayer.ui.common.dialogs.showConfirmDeleteDialog
 import com.github.anrimian.musicplayer.ui.common.error.ErrorCommand
 import com.github.anrimian.musicplayer.ui.common.format.FormatUtils
 import com.github.anrimian.musicplayer.ui.common.format.MessagesUtils
+import com.github.anrimian.musicplayer.ui.common.format.showSnackbar
 import com.github.anrimian.musicplayer.ui.common.toolbar.AdvancedToolbar
 import com.github.anrimian.musicplayer.ui.common.view.ViewUtils
 import com.github.anrimian.musicplayer.ui.editor.artist.RenameArtistDialogFragment
@@ -38,13 +41,13 @@ import com.github.anrimian.musicplayer.ui.library.artists.items.adapter.AlbumsAd
 import com.github.anrimian.musicplayer.ui.library.common.compositions.BaseLibraryCompositionsFragment
 import com.github.anrimian.musicplayer.ui.library.compositions.adapter.CompositionsAdapter
 import com.github.anrimian.musicplayer.ui.playlist_screens.choose.ChoosePlayListDialogFragment
-import com.github.anrimian.musicplayer.ui.playlist_screens.choose.newChoosePlayListDialogFragment
 import com.github.anrimian.musicplayer.ui.sleep_timer.SleepTimerDialogFragment
-import com.github.anrimian.musicplayer.ui.utils.fragments.BackButtonListener
+import com.github.anrimian.musicplayer.ui.utils.applyBottomInsets
 import com.github.anrimian.musicplayer.ui.utils.fragments.DialogFragmentRunner
 import com.github.anrimian.musicplayer.ui.utils.fragments.navigation.FragmentNavigation
 import com.github.anrimian.musicplayer.ui.utils.fragments.navigation.FragmentNavigationListener
 import com.github.anrimian.musicplayer.ui.utils.fragments.safeShow
+import com.github.anrimian.musicplayer.ui.utils.isTabletLand
 import com.github.anrimian.musicplayer.ui.utils.slidr.SlidrPanel
 import com.github.anrimian.musicplayer.ui.utils.views.recycler_view.RecyclerViewUtils
 import com.github.anrimian.musicplayer.ui.utils.views.recycler_view.SingleItemAdapter
@@ -54,7 +57,7 @@ import com.r0adkll.slidr.model.SlidrInterface
 import moxy.ktx.moxyPresenter
 
 class ArtistItemsFragment : BaseLibraryCompositionsFragment(), ArtistItemsView,
-    FragmentNavigationListener, BackButtonListener {
+    FragmentNavigationListener {
 
     companion object {
         fun newInstance(artistId: Long) = ArtistItemsFragment().apply {
@@ -96,6 +99,13 @@ class ArtistItemsFragment : BaseLibraryCompositionsFragment(), ArtistItemsView,
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         toolbar = requireActivity().findViewById(R.id.toolbar)
+
+        binding.fab.applyFabBottomInsets()
+        binding.progressStateView.applyLibraryProgressViewOffset(requireActivity())
+        if (isTabletLand()) {
+            binding.recyclerView.applyBottomInsets()
+        }
+
         binding.progressStateView.onTryAgainClick { presenter.onTryAgainLoadCompositionsClicked() }
 
         RecyclerViewUtils.attachFastScroller(binding.recyclerView, true)
@@ -146,7 +156,7 @@ class ArtistItemsFragment : BaseLibraryCompositionsFragment(), ArtistItemsView,
         slidrInterface = SlidrPanel.simpleSwipeBack(
             binding.listContainer,
             this,
-            toolbar::onStackFragmentSlided
+            toolbar::setNavigationButtonProgress
         )
 
         val fm = childFragmentManager
@@ -165,11 +175,14 @@ class ArtistItemsFragment : BaseLibraryCompositionsFragment(), ArtistItemsView,
 
     override fun onFragmentResumed() {
         presenter.onFragmentResumed()
-        val toolbar: AdvancedToolbar = requireActivity().findViewById(R.id.toolbar)
-        toolbar.setupSearch(null, null)
-        toolbar.setTitleClickListener(null)
-        toolbar.setupSelectionModeMenu(R.menu.library_compositions_selection_menu, this::onActionModeItemClicked)
-        toolbar.setupOptionsMenu(R.menu.library_artist_items_menu, this::onOptionsItemClicked)
+        requireActivity().findViewById<AdvancedToolbar>(R.id.toolbar).setup {
+            setupSelectionModeMenu(
+                R.menu.library_compositions_selection_menu,
+                ::onActionModeItemClicked,
+                presenter::onExitSelectionModeClicked
+            )
+            setupOptionsMenu(R.menu.library_artist_items_menu, ::onOptionsItemClicked)
+        }
     }
 
     override fun onStop() {
@@ -177,19 +190,9 @@ class ArtistItemsFragment : BaseLibraryCompositionsFragment(), ArtistItemsView,
         presenter.onStop(ViewUtils.getListPosition(layoutManager))
     }
 
-    override fun onBackPressed(): Boolean {
-        if (toolbar.isInActionMode()) {
-            presenter.onSelectionModeBackPressed()
-            return true
-        }
-        if (toolbar.isInSearchMode()) {
-            toolbar.setSearchModeEnabled(false)
-            return true
-        }
-        return false
-    }
-
     override fun getCoordinatorLayout() = binding.listContainer
+
+    override fun getFloatingActionButton() = binding.fab
 
     override fun showArtistInfo(artist: Artist) {
         toolbar.setTitle(artist.name)
@@ -276,12 +279,7 @@ class ArtistItemsFragment : BaseLibraryCompositionsFragment(), ArtistItemsView,
     }
 
     override fun showSelectPlayListDialog() {
-        val dialog = if (toolbar.isInActionMode()) {
-            newChoosePlayListDialogFragment(R.attr.actionModeStatusBarColor)
-        } else {
-            ChoosePlayListDialogFragment()
-        }
-        choosePlayListDialogRunner.show(dialog)
+        choosePlayListDialogRunner.show(ChoosePlayListDialogFragment())
     }
 
     override fun showConfirmDeleteDialog(compositionsToDelete: List<Composition>) {
@@ -294,17 +292,16 @@ class ArtistItemsFragment : BaseLibraryCompositionsFragment(), ArtistItemsView,
 
     override fun showDeleteCompositionError(errorCommand: ErrorCommand) {
         deletingErrorHandler.handleError(errorCommand) {
-            MessagesUtils.makeSnackbar(
-                binding.listContainer,
+            binding.listContainer.showSnackbar(
                 getString(R.string.delete_composition_error_template, errorCommand.message),
-                Snackbar.LENGTH_SHORT
-            ).show()
+                anchorView = binding.fab
+            )
         }
     }
 
     override fun showDeleteCompositionMessage(compositionsToDelete: List<DeletedComposition>) {
         val text = MessagesUtils.getDeleteCompleteMessage(requireActivity(), compositionsToDelete)
-        MessagesUtils.makeSnackbar(binding.listContainer, text, Snackbar.LENGTH_SHORT).show()
+        binding.listContainer.showSnackbar(text, anchorView = binding.fab)
     }
 
     override fun shareCompositions(selectedCompositions: Collection<Composition>) {
@@ -354,13 +351,17 @@ class ArtistItemsFragment : BaseLibraryCompositionsFragment(), ArtistItemsView,
     private fun onOptionsItemClicked(item: MenuItem) {
         when (item.itemId) {
             R.id.menu_rename -> presenter.onRenameArtistClicked()
-            R.id.menu_sleep_timer -> SleepTimerDialogFragment().safeShow(childFragmentManager)
-            R.id.menu_equalizer -> EqualizerDialogFragment().safeShow(childFragmentManager)
+            R.id.menu_sleep_timer -> SleepTimerDialogFragment().safeShow(this)
+            R.id.menu_equalizer -> EqualizerDialogFragment().safeShow(this)
         }
     }
 
     private fun showEditorRequestDeniedMessage() {
-        MessagesUtils.makeSnackbar(binding.listContainer, R.string.android_r_edit_file_permission_denied, Snackbar.LENGTH_LONG).show()
+        binding.listContainer.showSnackbar(
+            R.string.android_r_edit_file_permission_denied,
+            duration = Snackbar.LENGTH_LONG,
+            anchorView = binding.fab
+        )
     }
 
     private fun updateEmptyMessage() {

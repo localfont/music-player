@@ -1,13 +1,13 @@
 package com.github.anrimian.musicplayer.domain.interactors.editor
 
-import com.github.anrimian.filesync.SyncInteractor
+import com.github.anrimian.fsync.SyncInteractor
 import com.github.anrimian.musicplayer.domain.interactors.player.CompositionSourceInteractor
 import com.github.anrimian.musicplayer.domain.models.albums.Album
 import com.github.anrimian.musicplayer.domain.models.composition.FullComposition
 import com.github.anrimian.musicplayer.domain.models.composition.content.CompositionContentSource
 import com.github.anrimian.musicplayer.domain.models.image.ImageSource
 import com.github.anrimian.musicplayer.domain.models.sync.FileKey
-import com.github.anrimian.musicplayer.domain.models.utils.toKeyPair
+import com.github.anrimian.musicplayer.domain.models.utils.toChangedKey
 import com.github.anrimian.musicplayer.domain.repositories.EditorRepository
 import com.github.anrimian.musicplayer.domain.repositories.LibraryRepository
 import com.github.anrimian.musicplayer.domain.repositories.StorageSourceRepository
@@ -106,8 +106,12 @@ class EditorInteractor(
 
     fun editCompositionFileName(compositionId: Long, newFileName: String): Completable {
         return editorRepository.changeCompositionFileName(compositionId, newFileName)
-            .doOnSuccess { path -> syncInteractor.onLocalFileKeyChanged(path.toKeyPair()) }
-            .ignoreElement()
+            .flatMapCompletable { result ->
+                syncInteractor.onLocalFileKeyChanged(
+                    result.changedFiles.first().toChangedKey(),
+                    result.changeTime
+                )
+            }
     }
 
     fun getCompositionObservable(id: Long): Observable<FullComposition> {
@@ -183,9 +187,9 @@ class EditorInteractor(
         }
     }
 
-    fun getAuthorNames() = libraryRepository.authorNames
+    fun getAuthorNames() = libraryRepository.getAuthorNames()
 
-    fun getAlbumNames() = libraryRepository.albumNames
+    fun getAlbumNames() = libraryRepository.getAlbumNames()
 
     fun getGenreNames(forCompositionId: Long) = libraryRepository.getGenreNames(forCompositionId)
 

@@ -6,12 +6,14 @@ import com.github.anrimian.musicplayer.data.database.dao.albums.AlbumsDaoWrapper
 import com.github.anrimian.musicplayer.data.database.dao.artist.ArtistsDao
 import com.github.anrimian.musicplayer.data.database.dao.artist.ArtistsDaoWrapper
 import com.github.anrimian.musicplayer.data.database.dao.folders.FoldersDaoWrapper
-import com.github.anrimian.musicplayer.data.database.entities.composition.CompositionEntity
-import com.github.anrimian.musicplayer.data.database.mappers.CompositionMapper
+import com.github.anrimian.musicplayer.data.database.dao.genre.GenreDao
+import com.github.anrimian.musicplayer.data.database.mappers.CompositionCorruptionDetector
 import com.github.anrimian.musicplayer.data.models.changes.Change
 import com.github.anrimian.musicplayer.data.storage.providers.music.StorageComposition
 import com.github.anrimian.musicplayer.data.storage.providers.music.StorageFullComposition
 import com.github.anrimian.musicplayer.domain.models.composition.CorruptionType
+import com.github.anrimian.musicplayer.domain.models.composition.InitialSource
+import java.util.Date
 
 class StorageCompositionsInserter(
     private val libraryDatabase: LibraryDatabase,
@@ -22,6 +24,7 @@ class StorageCompositionsInserter(
     private val artistsDaoWrapper: ArtistsDaoWrapper,
     private val albumsDao: AlbumsDao,
     private val albumsDaoWrapper: AlbumsDaoWrapper,
+    private val genresDao: GenreDao
 ) {
 
     fun applyChanges(
@@ -29,7 +32,7 @@ class StorageCompositionsInserter(
         deletedCompositions: List<StorageComposition>,
         changedCompositions: List<Change<StorageComposition, StorageFullComposition>>,
     ) {
-        val previousCount = compositionsDao.compositionsCount
+        val previousCount = compositionsDao.getCompositionsCount()
 
         libraryDatabase.runInTransaction {
             applyCompositionChanges(addedCompositions, deletedCompositions, changedCompositions)
@@ -44,7 +47,7 @@ class StorageCompositionsInserter(
     private fun applyCompositionChanges(
         compositionsToAdd: List<StorageFullComposition>,
         deletedCompositions: List<StorageComposition>,
-        changedCompositions: List<Change<StorageComposition, StorageFullComposition>>
+        changedCompositions: List<Change<StorageComposition, StorageFullComposition>>,
     ) {
         insertCompositions(compositionsToAdd)
         for (composition in deletedCompositions) {
@@ -56,7 +59,7 @@ class StorageCompositionsInserter(
         albumsDao.deleteEmptyAlbums()
         artistsDao.deleteEmptyArtists()
         foldersDaoWrapper.deleteEmptyFolders()
-//        genresDao.deleteEmptyGenres();//not working properly here. Or just not working. Check
+        genresDao.deleteEmptyGenres()
     }
 
     private fun insertCompositions(compositionsToAdd: List<StorageFullComposition>) {
@@ -65,52 +68,61 @@ class StorageCompositionsInserter(
         val albumsCache = HashMap<String, Long>()
         val foldersCache = HashMap<String, Long>()
 
-        compositionsDao.insert(
-            compositionsToAdd.mapNotNull { composition ->
-                toCompositionEntity(composition, artistsCache, albumsCache, foldersCache)
+        for (composition in compositionsToAdd) {
+            val artist = composition.artist
+            val artistId = artistsDaoWrapper.getOrInsertArtist(artist, artistsCache)
+
+            var albumId: Long? = null
+            val storageAlbum = composition.storageAlbum
+            if (storageAlbum != null) {
+                albumId = albumsDaoWrapper.getOrInsertAlbum(
+                    storageAlbum.album,
+                    storageAlbum.artist,
+                    artistsCache,
+                    albumsCache
+                )
             }
-        )
-    }
 
-    private fun toCompositionEntity(
-        composition: StorageFullComposition,
-        artistsCache: Map<String, Long>,
-        albumsCache: Map<String, Long>,
-        foldersCache: HashMap<String, Long>
-    ): CompositionEntity? {
-        val artist = composition.artist
-        val artistId = artistsDaoWrapper.getOrInsertArtist(artist, artistsCache)
+            val folderId = foldersDaoWrapper.getOrCreateFolder(composition.relativePath, foldersCache)
 
-        var albumId: Long? = null
-        val storageAlbum = composition.storageAlbum
-        if (storageAlbum != null) {
-            albumId = albumsDaoWrapper.getOrInsertAlbum(
-                storageAlbum.album,
-                storageAlbum.artist,
-                artistsCache,
-                albumsCache
+            //if we have not found composition - just remove not_found mark
+            val id = compositionsDao.findCompositionByFileName(composition.fileName, folderId)
+            if (id != null) {
+                val storageId = compositionsDao.selectStorageId(id)
+                val actualStorageId = composition.storageId
+                if (storageId != actualStorageId) {
+                    compositionsDao.updateStorageId(id, actualStorageId)
+                    if (storageId == 0L) {
+                        val corruptionType = compositionsDao.selectCorruptionType(id)
+                        if (corruptionType == CorruptionType.NOT_FOUND || corruptionType == CorruptionType.SOURCE_NOT_FOUND) {
+                            compositionsDao.setCorruptionType(null, id)
+                        }
+                    }
+                    continue
+                }
+            }
+
+            compositionsDao.insert(
+                artistId,
+                albumId,
+                folderId,
+                composition.title,
+                null,
+                null,
+                null,
+                null,
+                composition.fileName,
+                composition.duration,
+                composition.size,
+                composition.storageId,
+                composition.dateAdded,
+                composition.dateModified,
+                Date(0),
+                Date(0),
+                CompositionCorruptionDetector.getCorruptionType(composition),
+                InitialSource.LOCAL
             )
         }
-
-        val folderId = foldersDaoWrapper.getOrCreateFolder(composition.relativePath, foldersCache)
-
-        //if we have not found composition - just remove not_found mark
-        val id = compositionsDao.findCompositionByFileName(composition.fileName, folderId)
-        if (id != null) {
-            val storageId = compositionsDao.selectStorageId(id)
-            val actualStorageId = composition.storageId
-            if (storageId != actualStorageId) {
-                compositionsDao.updateStorageId(id, actualStorageId)
-                if (storageId == 0L) {
-                    val corruptionType = compositionsDao.selectCorruptionType(id)
-                    if (corruptionType == CorruptionType.NOT_FOUND || corruptionType == CorruptionType.SOURCE_NOT_FOUND) {
-                        compositionsDao.setCorruptionType(null, id)
-                    }
-                }
-                return null
-            }
-        }
-        return CompositionMapper.toEntity(composition, artistId, albumId, folderId)
     }
 
     private fun handleCompositionUpdate(change: Change<StorageComposition, StorageFullComposition>) {

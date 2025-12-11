@@ -10,7 +10,7 @@ import java.util.Locale
 class LocaleControllerImpl(private val context: Context): LocaleController {
 
     private val preferences = SharedPreferencesHelper(
-        context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+        context.getSharedPreferences(LOCALE_PREFERENCES, Context.MODE_PRIVATE)
     )
 
     override fun dispatchAttachBaseContext(baseContext: Context): Context {
@@ -19,7 +19,7 @@ class LocaleControllerImpl(private val context: Context): LocaleController {
             return baseContext
         }
 
-        val locale = Locale(getCurrentLocaleCode())
+        val locale = Locale.forLanguageTag(languageCode)
         Locale.setDefault(locale)
 
         val resources = baseContext.resources
@@ -56,7 +56,7 @@ class LocaleControllerImpl(private val context: Context): LocaleController {
     }
 
     private companion object {
-        const val PREFERENCES_NAME = "locale_preferences"
+        const val LOCALE_PREFERENCES = "locale_preferences"
 
         const val CURRENT_LANGUAGE_CODE = "current_language_code"
         const val SYSTEM_LANGUAGE = "system_language"

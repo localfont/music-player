@@ -12,24 +12,29 @@ import com.github.anrimian.musicplayer.ui.common.error.ErrorCommand
 import com.github.anrimian.musicplayer.ui.common.toolbar.AdvancedToolbar
 import com.github.anrimian.musicplayer.ui.library.common.setupLibraryTitle
 import com.github.anrimian.musicplayer.ui.library.folders.LibraryFoldersFragment
-import com.github.anrimian.musicplayer.ui.utils.fragments.BackButtonListener
+import com.github.anrimian.musicplayer.ui.utils.fragments.navigation.BackActionRemoveCallback
 import com.github.anrimian.musicplayer.ui.utils.fragments.navigation.FragmentNavigation
 import com.github.anrimian.musicplayer.ui.utils.fragments.navigation.FragmentNavigationListener
 import com.github.anrimian.musicplayer.ui.utils.fragments.navigation.JugglerView
+import com.github.anrimian.musicplayer.ui.utils.fragments.navigation.attachBackPressedCallback
 import com.github.anrimian.musicplayer.ui.utils.wrappers.DefferedObject
 import moxy.MvpAppCompatFragment
 import moxy.ktx.moxyPresenter
 
-fun newLibraryFoldersRootFragment(
-    highlightCompositionId: Long = 0L
-) = LibraryFoldersRootFragment().apply {
-    arguments = Bundle().apply {
-        putLong(HIGHLIGHT_COMPOSITION_ID, highlightCompositionId)
-    }
-}
-
-class LibraryFoldersRootFragment : MvpAppCompatFragment(), FolderRootView, BackButtonListener,
+class LibraryFoldersRootFragment : MvpAppCompatFragment(), FolderRootView,
     FragmentNavigationListener {
+
+    companion object {
+
+        fun newInstance(
+            highlightCompositionId: Long = 0L
+        ) = LibraryFoldersRootFragment().apply {
+            arguments = Bundle().apply {
+                putLong(HIGHLIGHT_COMPOSITION_ID, highlightCompositionId)
+            }
+        }
+
+    }
 
     private val presenter by moxyPresenter {
         Components.getLibraryRootFolderComponent().folderRootPresenter()
@@ -42,6 +47,8 @@ class LibraryFoldersRootFragment : MvpAppCompatFragment(), FolderRootView, BackB
     private lateinit var jvFoldersContainer: JugglerView
     private lateinit var navigation: FragmentNavigation
     private val navigationWrapper = DefferedObject<FragmentNavigation>()
+    private lateinit var backActionRemoveCallback: BackActionRemoveCallback
+    private val backActionWrapper = DefferedObject<BackActionRemoveCallback>()
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -61,6 +68,8 @@ class LibraryFoldersRootFragment : MvpAppCompatFragment(), FolderRootView, BackB
 
         navigation = FragmentNavigation.from(childFragmentManager)
         navigation.initialize(jvFoldersContainer, savedInstanceState)
+        backActionRemoveCallback = navigation.attachBackPressedCallback(requireActivity())
+        backActionWrapper.setObject(backActionRemoveCallback)
         navigation.setExitAnimation(R.anim.anim_slide_out_right)
         navigation.setEnterAnimation(R.anim.anim_slide_in_right)
         navigationWrapper.setObject(navigation)
@@ -69,9 +78,10 @@ class LibraryFoldersRootFragment : MvpAppCompatFragment(), FolderRootView, BackB
     }
 
     override fun onFragmentResumed() {
-        val toolbar = requireActivity().findViewById<AdvancedToolbar>(R.id.toolbar)
-        toolbar.setupLibraryTitle(this)
-        toolbar.setSubtitle(R.string.folders)
+        requireActivity().findViewById<AdvancedToolbar>(R.id.toolbar).setup {
+            setupLibraryTitle(this@LibraryFoldersRootFragment)
+            setSubtitle(R.string.folders)
+        }
         val folderNavigation = FragmentNavigation.from(childFragmentManager)
         if (folderNavigation.isInitialized) {
             folderNavigation.dispatchMovedToTop()
@@ -83,14 +93,15 @@ class LibraryFoldersRootFragment : MvpAppCompatFragment(), FolderRootView, BackB
         navigation.onSaveInstanceState(outState)
     }
 
-    override fun onBackPressed(): Boolean {
-        val fragment = navigation.fragmentOnTop
-        return fragment is BackButtonListener && fragment.onBackPressed()
-    }
-
     override fun setMenuVisibility(menuVisible: Boolean) {
         super.setMenuVisibility(menuVisible)
+        backActionWrapper.call { callback -> callback.setPaused(!menuVisible) }
         navigationWrapper.call { navigation -> navigation.setMenuVisible(menuVisible) }
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        backActionRemoveCallback.remove()
     }
 
     override fun showFolderScreens(ids: List<Long?>) {

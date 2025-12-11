@@ -29,6 +29,7 @@ public class ExternalComposition {
     private final long size;
     private final long dateAdded;
     private final long dateModified;
+    @Nullable private final Long pathModifyTime;
     private final long coverModifyTime;
 
     private final boolean isFileExists;
@@ -48,6 +49,7 @@ public class ExternalComposition {
                                long size,
                                long dateAdded,
                                long dateModified,
+                               @Nullable Long pathModifyTime,
                                long coverModifyTime,
                                boolean isFileExists) {
         this.parentPath = parentPath;
@@ -65,6 +67,7 @@ public class ExternalComposition {
         this.size = size;
         this.dateAdded = dateAdded;
         this.dateModified = dateModified;
+        this.pathModifyTime = pathModifyTime;
         this.coverModifyTime = coverModifyTime;
         this.isFileExists = isFileExists;
     }
@@ -99,6 +102,11 @@ public class ExternalComposition {
 
     public long getDateModified() {
         return dateModified;
+    }
+
+    @Nullable
+    public Long getPathModifyTime() {
+        return pathModifyTime;
     }
 
     public long getCoverModifyTime() {

@@ -20,7 +20,7 @@ import com.github.anrimian.musicplayer.domain.models.play_queue.PlayQueueEvent
 import com.github.anrimian.musicplayer.domain.models.playlist.PlayList
 import com.github.anrimian.musicplayer.domain.models.playlist.PlayListItem
 import com.github.anrimian.musicplayer.domain.models.utils.CompositionHelper.formatCompositionName
-import com.github.anrimian.musicplayer.domain.utils.functions.Optional
+import com.github.anrimian.musicplayer.domain.utils.functions.Opt
 import com.github.anrimian.musicplayer.ui.common.format.FormatUtils.formatAlbumAdditionalInfoForMediaBrowser
 import com.github.anrimian.musicplayer.ui.common.format.FormatUtils.formatCompositionAdditionalInfoForMediaBrowser
 import com.github.anrimian.musicplayer.ui.common.format.FormatUtils.formatCompositionAuthor
@@ -47,45 +47,6 @@ import io.reactivex.rxjava3.disposables.Disposable
 //    ? can we set media session in such state when service will be bound again
 //   A3: do something with media session before service launch?
 
-const val PERMISSION_ERROR_ACTION_ID = "permission_error_action_id"
-const val DEFAULT_ERROR_ACTION_ID = "default_error_action_id"
-const val RECENT_MEDIA_ACTION_ID = "recent_media_action_id"
-const val RESUME_ACTION_ID = "resume_action_id"
-const val PAUSE_ACTION_ID = "pause_action_id"
-const val SHUFFLE_ALL_AND_PLAY_ACTION_ID = "shuffle_all_and_play_action_id"
-const val COMPOSITIONS_ACTION_ID = "compositions_action_id"
-const val FOLDERS_ACTION_ID = "folders_action_id"
-const val ARTIST_ITEMS_ACTION_ID = "artist_items_action_id"
-const val ALBUM_ITEMS_ACTION_ID = "album_items_action_id"
-const val GENRE_ITEMS_ACTION_ID = "genre_items_action_id"
-const val PLAYLIST_ITEMS_ACTION_ID = "playlist_items_action_id"
-const val SEARCH_ITEMS_ACTION_ID = "search_items_action_id"
-
-const val POSITION_ARG = "position_arg"
-const val COMPOSITION_ID_ARG = "composition_id_arg"
-const val FOLDER_ID_ARG = "folder_id_arg"
-const val ARTIST_ID_ARG = "artist_id_arg"
-const val ALBUM_ID_ARG = "artist_id_arg"
-const val GENRE_ID_ARG = "genre_id_arg"
-const val PLAYLIST_ID_ARG = "artist_id_arg"
-const val SEARCH_QUERY_ARG = "search_query_arg"
-
-private const val ROOT_ID = "root_id"
-private const val RECENT_MEDIA_ROOT_ID = "recent_media_root_id"
-
-private const val COMPOSITIONS_NODE_ID = "compositions_node_id"
-private const val FOLDERS_NODE_ID = "folders_node_id"
-private const val ARTISTS_NODE_ID = "artists_node_id"
-private const val ALBUMS_NODE_ID = "albums_node_id"
-private const val GENRES_NODE_ID = "genres_node_id"
-private const val PLAYLISTS_NODE_ID = "playlists_node_id"
-private const val ARTIST_ITEMS_NODE_ID = "artist_items_node_id"
-private const val ALBUM_ITEMS_NODE_ID = "album_items_node_id"
-private const val GENRE_ITEMS_NODE_ID = "genre_items_node_id"
-private const val PLAYLIST_ITEMS_NODE_ID = "playlist_items_node_id"
-
-const val DELIMITER = '-'
-
 //strange initial state(random? just in case of install while android auto is active?)
 
 //later improvements:
@@ -99,7 +60,8 @@ class AppMediaBrowserService: MediaBrowserServiceCompat() {
 
     override fun onCreate() {
         super.onCreate()
-        val mediaSessionHandler = Components.getAppComponent().mediaSessionHandler()
+        Components.checkInitialization(applicationContext)
+        val mediaSessionHandler = getAppComponent().mediaSessionHandler()
         mediaSessionHandler.dispatchServiceCreated()
         this.sessionToken = mediaSessionHandler.getMediaSession().sessionToken
     }
@@ -151,7 +113,7 @@ class AppMediaBrowserService: MediaBrowserServiceCompat() {
 
         resultCallback.detach()
 
-        currentRequestDisposable = Components.getAppComponent()
+        currentRequestDisposable = getAppComponent()
             .musicServiceInteractor()
             .getCompositionsObservable(query)
             .firstOrError()
@@ -167,12 +129,12 @@ class AppMediaBrowserService: MediaBrowserServiceCompat() {
         super.onDestroy()
         currentRequestDisposable?.dispose()
         itemUpdateDisposableMap.forEach { entry -> entry.value.dispose() }
-        Components.getAppComponent().mediaSessionHandler().dispatchServiceDestroyed()
+        getAppComponent().mediaSessionHandler().dispatchServiceDestroyed()
     }
 
     private fun loadRecentItem(resultCallback: Result<List<MediaBrowserCompat.MediaItem>>) {
         resultCallback.detach()
-        currentRequestDisposable = Components.getAppComponent()
+        currentRequestDisposable = getAppComponent()
             .libraryPlayerInteractor()
             .getCurrentQueueItemObservable()
             .firstOrError()
@@ -186,7 +148,7 @@ class AppMediaBrowserService: MediaBrowserServiceCompat() {
         loadItems(
             COMPOSITIONS_NODE_ID,
             resultCallback,
-            Components.getAppComponent().musicServiceInteractor().getCompositionsObservable(null)
+            getAppComponent().musicServiceInteractor().getCompositionsObservable(null)
         ) { compositions -> compositions.mapIndexed(this::toActionItem) }
     }
 
@@ -198,7 +160,7 @@ class AppMediaBrowserService: MediaBrowserServiceCompat() {
         loadItems(
             folderNodeId,
             resultCallback,
-            Components.getAppComponent().musicServiceInteractor().getFoldersObservable(parentFolderId)
+            getAppComponent().musicServiceInteractor().getFoldersObservable(parentFolderId)
         ) { sources -> sources.map { source -> toActionItem(source, parentFolderId) } }
     }
 
@@ -206,7 +168,7 @@ class AppMediaBrowserService: MediaBrowserServiceCompat() {
         loadItems(
             ARTISTS_NODE_ID,
             resultCallback,
-            Components.getAppComponent().musicServiceInteractor().artistsObservable
+            getAppComponent().musicServiceInteractor().artistsObservable
         ) { sources -> sources.map(this::toBrowsableItem) }
     }
 
@@ -218,7 +180,7 @@ class AppMediaBrowserService: MediaBrowserServiceCompat() {
         loadItems(
             nodeId,
             resultCallback,
-            Components.getAppComponent().musicServiceInteractor().getCompositionsByArtist(artistId)
+            getAppComponent().musicServiceInteractor().getCompositionsByArtist(artistId)
         ) { sources -> sources.mapIndexed { position, composition ->
             toActionArtistItem(position, composition, artistId)
         }
@@ -229,7 +191,7 @@ class AppMediaBrowserService: MediaBrowserServiceCompat() {
         loadItems(
             ALBUMS_NODE_ID,
             resultCallback,
-            Components.getAppComponent().musicServiceInteractor().albumsObservable
+            getAppComponent().musicServiceInteractor().albumsObservable
         ) { sources -> sources.map(this::toBrowsableItem) }
     }
 
@@ -237,7 +199,7 @@ class AppMediaBrowserService: MediaBrowserServiceCompat() {
         loadItems(
             GENRES_NODE_ID,
             resultCallback,
-            Components.getAppComponent().musicServiceInteractor().genresObservable
+            getAppComponent().musicServiceInteractor().genresObservable
         ) { sources -> sources.map(this::toBrowsableItem) }
     }
 
@@ -249,7 +211,7 @@ class AppMediaBrowserService: MediaBrowserServiceCompat() {
         loadItems(
             nodeId,
             resultCallback,
-            Components.getAppComponent().musicServiceInteractor().getAlbumItemsObservable(albumId)
+            getAppComponent().musicServiceInteractor().getAlbumItemsObservable(albumId)
         ) { sources -> sources.mapIndexed { position, composition ->
             toActionAlbumItem(position, composition, albumId)
         }
@@ -264,7 +226,7 @@ class AppMediaBrowserService: MediaBrowserServiceCompat() {
         loadItems(
             nodeId,
             resultCallback,
-            Components.getAppComponent().musicServiceInteractor().getGenreItemsObservable(genreId)
+            getAppComponent().musicServiceInteractor().getGenreItemsObservable(genreId)
         ) { sources -> sources.mapIndexed { position, composition ->
             toActionGenreItem(position, composition, genreId)
         }
@@ -275,7 +237,7 @@ class AppMediaBrowserService: MediaBrowserServiceCompat() {
         loadItems(
             PLAYLISTS_NODE_ID,
             resultCallback,
-            Components.getAppComponent().musicServiceInteractor().playListsObservable
+            getAppComponent().musicServiceInteractor().playListsObservable
         ) { sources -> sources.map(this::toBrowsableItem) }
     }
 
@@ -287,7 +249,7 @@ class AppMediaBrowserService: MediaBrowserServiceCompat() {
         loadItems(
             nodeId,
             resultCallback,
-            Components.getAppComponent().musicServiceInteractor().getPlaylistItemsObservable(playlistId)
+            getAppComponent().musicServiceInteractor().getPlaylistItemsObservable(playlistId)
         ) { sources -> sources.mapIndexed { position, composition ->
             toActionPlaylistItem(position, composition, playlistId)
         }
@@ -295,7 +257,7 @@ class AppMediaBrowserService: MediaBrowserServiceCompat() {
     }
 
     private fun loadRootItems(resultCallback: Result<List<MediaBrowserCompat.MediaItem>>) {
-        val libraryPlayerInteractor = Components.getAppComponent().libraryPlayerInteractor()
+        val libraryPlayerInteractor = getAppComponent().libraryPlayerInteractor()
         val observable = Observable.combineLatest(
             libraryPlayerInteractor.getPlayQueueSizeObservable(),
             libraryPlayerInteractor.getIsPlayingStateObservable(),
@@ -370,17 +332,17 @@ class AppMediaBrowserService: MediaBrowserServiceCompat() {
     }
 
     private fun processBrowsableItemUpdateError(throwable: Throwable): Any {
-        Components.getAppComponent().analytics().processNonFatalError(throwable)
+        getAppComponent().analytics().processNonFatalError(throwable)
         return TRIGGER
     }
 
     private fun <T> processRecentItemError(throwable: Throwable): List<T> {
-        Components.getAppComponent().analytics().processNonFatalError(throwable)
+        getAppComponent().analytics().processNonFatalError(throwable)
         return emptyList()
     }
 
     private fun Result<List<MediaBrowserCompat.MediaItem>>.sendErrorResult(throwable: Throwable) {
-        val errorParser = Components.getAppComponent().errorParser()
+        val errorParser = getAppComponent().errorParser()
         errorParser.logError(throwable)
         val errorCommand = errorParser.parseError(throwable)
         sendErrorResult(DEFAULT_ERROR_ACTION_ID, errorCommand.message)
@@ -402,22 +364,21 @@ class AppMediaBrowserService: MediaBrowserServiceCompat() {
 
     private fun toRecentItem(playQueueEvent: PlayQueueEvent): Single<List<MediaBrowserCompat.MediaItem>> {
         val queueItem = playQueueEvent.playQueueItem ?: return Single.just(emptyList())
-        val composition = queueItem.composition
 
-        val appComponent = Components.getAppComponent()
+        val appComponent = getAppComponent()
         val coverUriSingle =
             if (appComponent.musicServiceInteractor().isCoversInNotificationEnabled) {
-                appComponent.imageLoader().loadImageUri(composition)
+                appComponent.imageLoader().loadImageUri(queueItem)
             } else {
-                Single.just(Optional(null))
+                Single.just(Opt(null))
             }
 
         return coverUriSingle.map { coverUriOpt ->
             val item = MediaBrowserCompat.MediaItem(
                 MediaDescriptionCompat.Builder()
                     .setMediaId(RECENT_MEDIA_ACTION_ID)
-                    .setTitle(formatCompositionName(composition))
-                    .setSubtitle(formatCompositionAuthor(composition, this))
+                    .setTitle(formatCompositionName(queueItem))
+                    .setSubtitle(formatCompositionAuthor(queueItem, this))
                     .setIconUri(coverUriOpt.value)
                     .build(),
                 MediaBrowserCompat.MediaItem.FLAG_PLAYABLE
@@ -507,11 +468,10 @@ class AppMediaBrowserService: MediaBrowserServiceCompat() {
         playlistItem: PlayListItem,
         playlistId: Long
     ): MediaBrowserCompat.MediaItem {
-        val composition = playlistItem.composition
         return actionItem(
             PLAYLIST_ITEMS_ACTION_ID,
-            formatCompositionName(composition),
-            formatCompositionAdditionalInfoForMediaBrowser(this, composition),
+            formatCompositionName(playlistItem),
+            formatCompositionAdditionalInfoForMediaBrowser(this, playlistItem),
             Bundle().apply {
                 putInt(POSITION_ARG, position)
                 putLong(PLAYLIST_ID_ARG, playlistId)
@@ -577,5 +537,48 @@ class AppMediaBrowserService: MediaBrowserServiceCompat() {
             .build(),
         MediaBrowserCompat.MediaItem.FLAG_BROWSABLE
     )
+
+    private fun getAppComponent() = Components.getAppComponent()
+
+    companion object {
+        const val PERMISSION_ERROR_ACTION_ID = "permission_error_action_id"
+        const val DEFAULT_ERROR_ACTION_ID = "default_error_action_id"
+        const val RECENT_MEDIA_ACTION_ID = "recent_media_action_id"
+        const val RESUME_ACTION_ID = "resume_action_id"
+        const val PAUSE_ACTION_ID = "pause_action_id"
+        const val SHUFFLE_ALL_AND_PLAY_ACTION_ID = "shuffle_all_and_play_action_id"
+        const val COMPOSITIONS_ACTION_ID = "compositions_action_id"
+        const val FOLDERS_ACTION_ID = "folders_action_id"
+        const val ARTIST_ITEMS_ACTION_ID = "artist_items_action_id"
+        const val ALBUM_ITEMS_ACTION_ID = "album_items_action_id"
+        const val GENRE_ITEMS_ACTION_ID = "genre_items_action_id"
+        const val PLAYLIST_ITEMS_ACTION_ID = "playlist_items_action_id"
+        const val SEARCH_ITEMS_ACTION_ID = "search_items_action_id"
+
+        const val POSITION_ARG = "position_arg"
+        const val COMPOSITION_ID_ARG = "composition_id_arg"
+        const val FOLDER_ID_ARG = "folder_id_arg"
+        const val ARTIST_ID_ARG = "artist_id_arg"
+        const val ALBUM_ID_ARG = "artist_id_arg"
+        const val GENRE_ID_ARG = "genre_id_arg"
+        const val PLAYLIST_ID_ARG = "artist_id_arg"
+        const val SEARCH_QUERY_ARG = "search_query_arg"
+
+        private const val ROOT_ID = "root_id"
+        private const val RECENT_MEDIA_ROOT_ID = "recent_media_root_id"
+
+        private const val COMPOSITIONS_NODE_ID = "compositions_node_id"
+        private const val FOLDERS_NODE_ID = "folders_node_id"
+        private const val ARTISTS_NODE_ID = "artists_node_id"
+        private const val ALBUMS_NODE_ID = "albums_node_id"
+        private const val GENRES_NODE_ID = "genres_node_id"
+        private const val PLAYLISTS_NODE_ID = "playlists_node_id"
+        private const val ARTIST_ITEMS_NODE_ID = "artist_items_node_id"
+        private const val ALBUM_ITEMS_NODE_ID = "album_items_node_id"
+        private const val GENRE_ITEMS_NODE_ID = "genre_items_node_id"
+        private const val PLAYLIST_ITEMS_NODE_ID = "playlist_items_node_id"
+
+        const val DELIMITER = '-'
+    }
 
 }

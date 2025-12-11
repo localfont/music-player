@@ -2,7 +2,6 @@
 <resources>
 
     <string name="open_drawer">Çekmeceyi Aç</string>
-    <string name="close_drawer">Çekmeceyi kapat</string>
     <string name="try_again">Tekrar deneyin</string>
     <string name="can_not_work_without_file_permission">Uygulama, dosya izni olmadan çalışamaz</string>
     <string name="close">Kapat</string>

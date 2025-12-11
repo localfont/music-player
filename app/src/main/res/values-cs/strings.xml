@@ -2,7 +2,6 @@
 <resources>
 
     <string name="open_drawer">Otevřít dok aplikací</string>
-    <string name="close_drawer">Zavřít dok aplikací</string>
     <string name="try_again">Zkusit znovu</string>
     <string name="can_not_work_without_file_permission">Aplikace nemůže pracovat bez oprávnění přístupu k úložišti</string>
     <string name="close">Zavřít</string>

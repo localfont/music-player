@@ -24,8 +24,10 @@ import com.github.anrimian.musicplayer.domain.models.composition.change.Composit
 import com.github.anrimian.musicplayer.domain.models.composition.content.CompositionContentSource
 import com.github.anrimian.musicplayer.domain.models.composition.tags.AudioFileInfo
 import com.github.anrimian.musicplayer.domain.models.folders.FileSource
+import com.github.anrimian.musicplayer.domain.models.folders.FilesChangeResult
 import com.github.anrimian.musicplayer.domain.models.folders.FolderFileSource
 import com.github.anrimian.musicplayer.domain.models.image.ImageSource
+import com.github.anrimian.musicplayer.domain.models.sync.FileKey
 import com.github.anrimian.musicplayer.domain.repositories.EditorRepository
 import com.github.anrimian.musicplayer.domain.repositories.LibraryRepository
 import com.github.anrimian.musicplayer.domain.repositories.PlayListsRepository
@@ -146,7 +148,10 @@ class EditorRepositoryImpl(
     ): Completable {
         return performSourceUpdate(source, sourceEditor.setCompositionAuthor(source, newAuthor)
             .doOnComplete { setCompositionInitialSourceToApp(compositionId) }
-            .doOnComplete { compositionsDao.updateArtist(compositionId, newAuthor) }
+            .doOnComplete {
+                compositionsDao.updateArtist(compositionId, newAuthor)
+                compositionsDao.setModifyTimeToCurrent(compositionId)
+            }
         )
     }
 
@@ -157,7 +162,10 @@ class EditorRepositoryImpl(
     ): Completable {
         return performSourceUpdate(source, sourceEditor.setCompositionAlbumArtist(source, newAuthor)
             .doOnComplete { setCompositionInitialSourceToApp(compositionId) }
-            .doOnComplete { compositionsDao.updateAlbumArtist(compositionId, newAuthor) }
+            .doOnComplete {
+                compositionsDao.updateAlbumArtist(compositionId, newAuthor)
+                compositionsDao.setModifyTimeToCurrent(compositionId)
+            }
         )
     }
 
@@ -168,7 +176,10 @@ class EditorRepositoryImpl(
     ): Completable {
         return performSourceUpdate(source, sourceEditor.setCompositionAlbum(source, newAlbum)
             .doOnComplete { setCompositionInitialSourceToApp(compositionId) }
-            .doOnComplete { compositionsDao.updateAlbum(compositionId, newAlbum) }
+            .doOnComplete {
+                compositionsDao.updateAlbum(compositionId, newAlbum)
+                compositionsDao.setModifyTimeToCurrent(compositionId)
+            }
         )
     }
 
@@ -238,8 +249,8 @@ class EditorRepositoryImpl(
             val newName = filesDataSource.renameCompositionFile(composition, fileName)
             listOf(composition.id to newName)
         },
-        {} //do nothing, file will be renamed in root method anyway
-    ).map(List<ChangedCompositionPath>::first)
+        { emptyList() } //do nothing, file will be renamed in root method anyway
+    )
 
     override fun changeFolderName(
         folderId: Long,
@@ -281,7 +292,10 @@ class EditorRepositoryImpl(
                         toFolderRelativePath
                     )
                 },
-                { foldersDao.updateFolderId(files, toFolderId) }
+                {
+                    foldersDao.updateFolderId(files, toFolderId)
+                    emptyList()
+                }
             )
         }
 
@@ -323,7 +337,7 @@ class EditorRepositoryImpl(
     private fun performChangeFilesPath(
         compositionsProvider: () -> Collection<CompositionMoveData>,
         fileAction: (compositions: Collection<CompositionMoveData>) -> List<Pair<Long, String>>,
-        dbAction: () -> Unit
+        dbAction: () -> List<FileKey>
     ) = Single.fromCallable {
         storageMusicProvider.setContentObserverEnabled(false)
         try {
@@ -331,12 +345,17 @@ class EditorRepositoryImpl(
 
             val changedFileNames = fileAction(compositions)
             val compositionIds = compositions.map(CompositionMoveData::id)
+            lateinit var restoredFiles: List<FileKey>
+            val currentTime = System.currentTimeMillis()
             libraryDatabase.runInTransaction {
                 for ((id, name) in changedFileNames) {
                     compositionsDao.updateCompositionFileName(id, name)
                 }
+                for (id in compositionIds) {
+                    compositionsDao.setCompositionPathModifyTime(id, currentTime)
+                }
                 setCompositionIdsInitialSourceToApp(compositionIds)
-                dbAction()//order is important, should be at the end
+                restoredFiles = dbAction()//order is important, should be at the end
             }
             val playlists = playListsDao.getPlayListsForCompositions(compositionIds)
             playlists.forEach(playListsRepository::updatePlaylistCache)
@@ -346,14 +365,16 @@ class EditorRepositoryImpl(
             //in case of merged folders, amount of changed compositions can be more than on start.
             // Extra compositions will not play any role in returned paths
             val changedCompositionsMap = changedCompositions.associateBy { c -> c.id }
-            return@fromCallable compositions.map { composition ->
+            val changedFiles = compositions.map { composition ->
                 val changedComposition = changedCompositionsMap[composition.id]
                     ?: throw IllegalStateException("missing composition: ${composition.fileName}")
                 ChangedCompositionPath(
                     CompositionPath(composition.fileName, composition.parentPath),
                     CompositionPath(changedComposition.fileName, changedComposition.parentPath),
+                    composition.pathModifyTime
                 )
             }
+            return@fromCallable FilesChangeResult(changedFiles, restoredFiles, currentTime)
         } finally {
             storageMusicProvider.setContentObserverEnabled(true)
         }

@@ -10,6 +10,7 @@ public class NavigationFragment extends Fragment {
 
     private FragmentNavigation fragmentNavigation;
 
+    /** @noinspection deprecation*/
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);

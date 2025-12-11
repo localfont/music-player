@@ -5,7 +5,7 @@ import android.view.ViewGroup
 import androidx.lifecycle.LifecycleOwner
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
-import com.github.anrimian.filesync.models.state.file.FileSyncState
+import com.github.anrimian.fsync.models.state.file.FileSyncState
 import com.github.anrimian.musicplayer.domain.Payloads
 import com.github.anrimian.musicplayer.domain.models.composition.Composition
 import com.github.anrimian.musicplayer.domain.models.composition.CurrentComposition
@@ -57,7 +57,7 @@ open class CompositionsAdapter<T : Composition>(
         val selected = selectedCompositions.contains(composition)
         holder.setSelected(selected)
         holder.showCurrentComposition(currentComposition, false)
-        holder.setFileSyncStates(syncStates)
+        holder.showFileSyncState(syncStates[composition.id])
     }
 
     override fun onBindViewHolder(
@@ -111,7 +111,8 @@ open class CompositionsAdapter<T : Composition>(
     fun showFileSyncStates(states: Map<Long, FileSyncState>) {
         this.syncStates = states
         forEachHolder { holder ->
-            holder.setFileSyncStates(syncStates)
+            holder.showFileSyncState(syncStates[holder.getComposition().id])
         }
     }
+
 }

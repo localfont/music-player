@@ -1,6 +1,6 @@
 package com.github.anrimian.musicplayer.data.database.dao.play_list;
 
-import static com.github.anrimian.musicplayer.data.utils.TestDataProvider.composition;
+import static com.github.anrimian.musicplayer.data.database.dao.play_list.DbTestUtils.insert;
 import static com.github.anrimian.musicplayer.domain.utils.ListUtils.asList;
 
 import android.content.Context;
@@ -50,7 +50,7 @@ public class PlayListsDaoWrapperTest {
         long playlistId = daoWrapper.insertPlayList("playlist", new Date(), new Date(), () -> null);
 
         for (int i = 0; i < 10; i++) {
-            long id = compositionsDao.insert(composition(null, null, String.valueOf(i)));
+            long id = insert(compositionsDao, null, null, String.valueOf(i));
             playListDao.insertPlayListEntries(asList(new PlayListEntryEntity(
                     null,
                     id,
@@ -95,7 +95,7 @@ public class PlayListsDaoWrapperTest {
             sb.append("itemId = ");
             sb.append(item.getItemId());
             sb.append("; title = ");
-            sb.append(item.getComposition().getTitle());
+            sb.append(item.getTitle());
             sb.append(";");
         }
         String text = sb.toString();

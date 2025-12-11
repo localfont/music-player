@@ -1,7 +1,9 @@
-apply plugin: 'com.android.library'
-apply plugin: 'kotlin-android'
-apply plugin: 'kotlin-kapt'
-apply plugin: "de.mannodermaus.android-junit5"
+plugins {
+    id 'com.android.library'
+    alias(libs.plugins.kotlinAndroid)
+    id 'kotlin-kapt'
+    alias(libs.plugins.androidJunit5)
+}
 
 android {
     namespace 'com.github.anrimian.musicplayer'
@@ -17,14 +19,12 @@ android {
         testInstrumentationRunner config.testInstrumentationRunner
         testInstrumentationRunnerArguments["runnerBuilder"] = config.testJunit5Builder
 
-        vectorDrawables.useSupportLibrary = true
-        resConfigs 'en', 'be', 'cs', 'de', 'el', 'es', 'fr', 'in', 'pt', 'ru', 'tr', 'uk'
-
+        resourceConfigurations += ['en', 'be', 'cs', 'de', 'el', 'es', 'fr', 'in', 'pt', 'ru', 'tr', 'uk', 'ko', 'zh-Hans', 'zh-Hant']
     }
     buildTypes {
         release {
-            minifyEnabled true
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            minifyEnabled false
+            consumerProguardFiles 'proguard-rules.pro'
         }
         QA {
             initWith release
@@ -33,7 +33,6 @@ android {
             minifyEnabled false
         }
     }
-
     buildFeatures {
         viewBinding true
     }
@@ -51,9 +50,13 @@ android {
                     '**/kotlin/**',
                     '**/*.txt',
                     '**/*.xml',
-                    '**/*.properties'
+                    '/*.properties',
+                    'DebugProbesKt.bin'
             ]
         }
+    }
+    lint {
+        abortOnError false
     }
 }
 
@@ -62,50 +65,49 @@ dependencies {
     implementation project(':domain')
     implementation project(':data')
 
-    implementation project(':libs:filesync:core')
+    implementation project(':libs:fsync:core')
 
-    implementation kotlinStdLib
+    implementation libs.kotlinStdLib
 
-    implementation appCompat
-    implementation appCompatResources
-    implementation material
-    implementation recyclerView
-    implementation constraintLayout
-    implementation supportMedia
+    implementation libs.appCompat
+    implementation libs.appCompatResources
+    implementation libs.material
+    implementation libs.recyclerView
+    implementation libs.constraintLayout
+    implementation libs.supportMedia
 
-    implementation rxAndroid
+    implementation libs.rxAndroid
 
-    implementation moxy
-    implementation moxyAppcompat
-    implementation moxyMaterial
-    implementation moxyKtx
-    kapt moxyCompiler
+    implementation libs.coroutinesAndroid
 
-    implementation dagger
-    kapt daggerCompiler
+    implementation libs.moxy
+    implementation libs.moxyAppcompat
+    implementation libs.moxyMaterial
+    implementation libs.moxyKtx
+    kapt libs.moxyCompiler
 
-    implementation room
-    kapt roomCompiler
+    implementation libs.dagger
+    kapt libs.daggerCompiler
 
-    implementation glide
-    kapt glideCompiler
+    implementation libs.room
+    kapt libs.roomCompiler
 
-    implementation slidr
+    implementation libs.glide
+    kapt libs.glideCompiler
 
-    implementation chipsLayoutManager
+    implementation libs.slidr
 
-    implementation rotateLayout
+    implementation libs.chipsLayoutManager
 
-    compileOnly javaxAnnotation
-    compileOnly javaxGeneratedAnnotation
+    implementation libs.rotateLayout
 
-    testImplementation junit5
-    testImplementation junit5Params
-    testRuntimeOnly junit5Engine
-    testImplementation mockito
+    compileOnly libs.javaxAnnotation
 
-    androidTestImplementation androidXTestRunner
-    androidTestImplementation junit5PluginCore
-    androidTestRuntimeOnly junit5PluginRunner
-    androidTestImplementation espresso
+    testImplementation libs.junit5
+    testImplementation libs.junit5Params
+    testRuntimeOnly libs.junit5Engine
+    testImplementation libs.mockito
+
+    androidTestImplementation libs.androidXTestRunner
+    androidTestImplementation libs.espresso
 }

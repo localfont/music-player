@@ -25,6 +25,7 @@
         <item name="snackbarBackground">@color/snackbar_color_dark</item>
         <item name="popupPageForegroundShadowColor">@color/popup_page_foreground_shadow_color_dark</item>
         <item name="chipBackground">@color/chip_background_dark</item>
+        <item name="horizontalNavBarBackground">@color/nav_bar_horizontal_background_dark</item>
 
         <!--text-->
         <item name="android:textColorPrimary">@color/text_color_primary_dark</item>
@@ -47,9 +48,6 @@
         <item name="colorControlHighlightInverse">@color/color_control_highlight_light</item>
         <item name="colorControlThird">@color/dialog_background_color_dark</item>
 
-        <!--navigation view-->
-        <item name="navigationViewPrimaryColor">?android:attr/textColorPrimary</item>
-
         <!--toolbar-->
         <item name="actionModeStatusBarColor">@color/actionModeStatusBarColorDark</item>
         <item name="actionModeBackgroundColor">@color/actionModeBackgroundColorDark</item>
@@ -70,9 +68,6 @@
 
         <!--text-->
         <item name="dialogButtonColor">@color/colorGreenAccent</item>
-
-        <!--navigation view-->
-        <item name="navigationViewPrimaryColor">@color/color_indigo_primary</item>
     </style>
 
     <style name="PrimaryTealTheme" parent="PrimaryLightTheme">
@@ -83,9 +78,6 @@
 
         <!--text-->
         <item name="dialogButtonColor">@color/colorPinkAccent</item>
-
-        <!--navigation view-->
-        <item name="navigationViewPrimaryColor">@color/colorTealPrimary</item>
     </style>
 
     <style name="PrimaryRedTheme" parent="PrimaryLightTheme">
@@ -97,9 +89,6 @@
 
         <!--text-->
         <item name="dialogButtonColor">@color/colorRedPrimary</item>
-
-        <!--navigation view-->
-        <item name="navigationViewPrimaryColor">@color/colorRedPrimary</item>
     </style>
 
     <style name="PrimaryOrangeTheme" parent="PrimaryLightTheme">
@@ -111,9 +100,6 @@
 
         <!--text-->
         <item name="dialogButtonColor">@color/colorOrangePrimary</item>
-
-        <!--navigation view-->
-        <item name="navigationViewPrimaryColor">@color/colorOrangePrimary</item>
     </style>
 
     <style name="PrimaryPurplePinkTheme" parent="PrimaryLightTheme">
@@ -124,9 +110,6 @@
 
         <!--text-->
         <item name="dialogButtonColor">@color/colorPinkAccent</item>
-
-        <!--navigation view-->
-        <item name="navigationViewPrimaryColor">@color/color_purple_primary</item>
     </style>
 
     <style name="PrimaryBlueOrangeTheme" parent="PrimaryLightTheme">
@@ -137,9 +120,6 @@
 
         <!--text-->
         <item name="dialogButtonColor">@color/color_orange_accent</item>
-
-        <!--navigation view-->
-        <item name="navigationViewPrimaryColor">@color/color_blue_primary</item>
     </style>
 
     <style name="DarkOrangeTheme" parent="@style/PrimaryDarkTheme">
@@ -159,7 +139,7 @@
         <item name="dialogButtonColor">@color/colorGreenDarkAccent</item>
     </style>
 
-    <style name="CompletelyWhiteTheme" parent="PrimaryLightTheme">
+    <style name="BaseCompletelyWhiteTheme" parent="PrimaryLightTheme">
         <!--primary colors-->
         <item name="colorPrimary">@android:color/white</item>
         <item name="colorPrimaryDark">@color/colorPrimaryWhiteGray</item>
@@ -173,13 +153,20 @@
         <item name="android:textColorSecondaryInverse">@color/text_color_secondary</item>
         <item name="dialogButtonColor">@color/colorAccentBlue</item>
 
+        <!--toolbar-->
+        <item name="actionModeTextColor">@color/text_color_primary</item>
+        <item name="actionModeBackgroundColor">@android:color/white</item>
+        <!--should always be set if white-->
+        <item name="actionModeStatusBarColor">@android:color/white</item>
+
         <!--background-->
         <item name="android:colorBackground">@android:color/white</item>
         <item name="listBackground">@android:color/white</item>
         <item name="listItemBackground">@android:color/white</item>
+    </style>
 
-        <!--navigation view-->
-        <item name="navigationViewPrimaryColor">@color/colorAccentBlue</item>
+    <style name="CompletelyWhiteTheme" parent="BaseCompletelyWhiteTheme">
+        <item name="android:statusBarColor">@color/colorPrimaryWhiteGray</item>
     </style>
 
     <style name="CompletelyBlackTheme" parent="PrimaryDarkTheme">
@@ -196,6 +183,7 @@
         <item name="popupMenuBackgroundColor">@color/dark_background_level_0</item>
         <item name="dialogBackground">@color/dark_background_level_0</item>
         <item name="subToolbarBackground">@android:color/black</item>
+        <item name="horizontalNavBarBackground">@android:color/black</item>
     </style>
 
     <style name="WidgetTheme">

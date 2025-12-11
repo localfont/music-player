@@ -1,8 +1,12 @@
 package com.github.anrimian.musicplayer.ui.notifications;
 
 import static com.github.anrimian.musicplayer.Constants.Actions.CHANGE_REPEAT_MODE;
+import static com.github.anrimian.musicplayer.Constants.Actions.CHANGE_SHUFFLE_NODE;
+import static com.github.anrimian.musicplayer.Constants.Actions.CLOSE;
+import static com.github.anrimian.musicplayer.Constants.Actions.FAST_FORWARD;
 import static com.github.anrimian.musicplayer.Constants.Actions.PAUSE;
 import static com.github.anrimian.musicplayer.Constants.Actions.PLAY;
+import static com.github.anrimian.musicplayer.Constants.Actions.REWIND;
 import static com.github.anrimian.musicplayer.Constants.Actions.SKIP_TO_NEXT;
 import static com.github.anrimian.musicplayer.Constants.Actions.SKIP_TO_PREVIOUS;
 import static com.github.anrimian.musicplayer.Constants.Arguments.LAUNCH_PREPARE_ARG;
@@ -11,6 +15,7 @@ import static com.github.anrimian.musicplayer.domain.models.utils.CompositionHel
 import static com.github.anrimian.musicplayer.infrastructure.service.music.MusicService.REQUEST_CODE;
 import static com.github.anrimian.musicplayer.ui.common.format.FormatUtils.formatAuthor;
 import static com.github.anrimian.musicplayer.ui.common.format.FormatUtils.formatCompositionAuthor;
+import static com.github.anrimian.musicplayer.ui.common.format.FormatUtils.getRandomModeIcon;
 import static com.github.anrimian.musicplayer.ui.common.format.FormatUtils.getRepeatModeIcon;
 import static com.github.anrimian.musicplayer.ui.common.format.FormatUtils.getRepeatModeText;
 
@@ -92,7 +97,7 @@ public class MediaNotificationsDisplayerImpl implements MediaNotificationsDispla
         return new NotificationCompat.Builder(context, FOREGROUND_CHANNEL_ID)
                 .setContentTitle("")
                 .setContentText("")
-                .setSmallIcon(R.drawable.ic_music_box)
+                .setSmallIcon(R.drawable.ic_notification_icon)
                 .setShowWhen(false)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
@@ -107,6 +112,7 @@ public class MediaNotificationsDisplayerImpl implements MediaNotificationsDispla
                                             @Nullable CompositionSource source,
                                             MediaSessionCompat mediaSession,
                                             int repeatMode,
+                                            boolean randomMode,
                                             @Nullable MusicNotificationSetting notificationSetting,
                                             boolean reloadCover) {
         notificationInfoState = new NotificationInfoState(
@@ -114,6 +120,7 @@ public class MediaNotificationsDisplayerImpl implements MediaNotificationsDispla
                 source,
                 mediaSession,
                 repeatMode,
+                randomMode,
                 notificationSetting
         );
 
@@ -121,6 +128,7 @@ public class MediaNotificationsDisplayerImpl implements MediaNotificationsDispla
                 source,
                 mediaSession,
                 repeatMode,
+                randomMode,
                 notificationSetting)
                 .build();
         service.startForeground(FOREGROUND_NOTIFICATION_ID, notification);
@@ -135,6 +143,7 @@ public class MediaNotificationsDisplayerImpl implements MediaNotificationsDispla
                                              @Nullable CompositionSource source,
                                              MediaSessionCompat mediaSession,
                                              int repeatMode,
+                                             boolean randomMode,
                                              MusicNotificationSetting notificationSetting,
                                              boolean reloadCover) {
         if (!isNotificationVisible(notificationManager, FOREGROUND_NOTIFICATION_ID)) {
@@ -146,6 +155,7 @@ public class MediaNotificationsDisplayerImpl implements MediaNotificationsDispla
                 source,
                 mediaSession,
                 repeatMode,
+                randomMode,
                 notificationSetting
         );
 
@@ -153,6 +163,7 @@ public class MediaNotificationsDisplayerImpl implements MediaNotificationsDispla
                 source,
                 mediaSession,
                 repeatMode,
+                randomMode,
                 notificationSetting)
                 .build();
         safeNotify(notificationManager, FOREGROUND_NOTIFICATION_ID, notification);
@@ -207,6 +218,7 @@ public class MediaNotificationsDisplayerImpl implements MediaNotificationsDispla
                             notificationInfoState.source,
                             notificationInfoState.mediaSession,
                             notificationInfoState.repeatMode,
+                            notificationInfoState.randomMode,
                             notificationInfoState.notificationSetting
                     );
 
@@ -221,6 +233,7 @@ public class MediaNotificationsDisplayerImpl implements MediaNotificationsDispla
                                                                    @Nullable CompositionSource source,
                                                                    MediaSessionCompat mediaSession,
                                                                    int repeatMode,
+                                                                   boolean randomMode,
                                                                    @Nullable MusicNotificationSetting notificationSetting) {
         Intent intent;
         if (source instanceof ExternalCompositionSource) {
@@ -243,7 +256,7 @@ public class MediaNotificationsDisplayerImpl implements MediaNotificationsDispla
 
         NotificationCompat.Builder builder = notificationBuilder.buildMusicNotification(context)
                 .setColorized(coloredNotification)
-                .setSmallIcon(R.drawable.ic_music_box)
+                .setSmallIcon(R.drawable.ic_notification_icon)
                 .setContentIntent(pIntent)
                 .setShowWhen(false)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -252,7 +265,7 @@ public class MediaNotificationsDisplayerImpl implements MediaNotificationsDispla
 
         if (source != null) {
             formatCompositionSource(source, builder);
-            setActionsToNotification(isPlayingState, source, mediaSession, repeatMode, builder);
+            setActionsToNotification(isPlayingState, source, mediaSession, repeatMode, randomMode, builder);
         }
 
         if (showCovers) {
@@ -273,6 +286,7 @@ public class MediaNotificationsDisplayerImpl implements MediaNotificationsDispla
                                           @Nonnull CompositionSource source,
                                           MediaSessionCompat mediaSession,
                                           int repeatMode,
+                                          boolean randomMode,
                                           NotificationCompat.Builder builder) {
         int requestCode = isPlayingState == Constants.RemoteViewPlayerState.PAUSE? PLAY: PAUSE;
         Intent intentPlayPause = new Intent(context, MusicService.class);
@@ -291,6 +305,17 @@ public class MediaNotificationsDisplayerImpl implements MediaNotificationsDispla
         style.setMediaSession(mediaSession.getSessionToken());
 
         if (source instanceof LibraryCompositionSource) {
+            Intent intentChangeRandomMode = new Intent(context, MusicService.class);
+            intentChangeRandomMode.putExtra(REQUEST_CODE, CHANGE_SHUFFLE_NODE);
+            PendingIntent pIntentChangeRandomMode = PendingIntent.getService(context,
+                    CHANGE_SHUFFLE_NODE,
+                    intentChangeRandomMode,
+                    AndroidUtilsKt.pIntentFlag(PendingIntent.FLAG_UPDATE_CURRENT));
+            NotificationCompat.Action changeRandomModeAction = new NotificationCompat.Action(
+                    getRandomModeIcon(randomMode),
+                    context.getString(R.string.content_description_shuffle),
+                    pIntentChangeRandomMode);
+
             Intent intentSkipToPrevious = new Intent(context, MusicService.class);
             intentSkipToPrevious.putExtra(REQUEST_CODE, SKIP_TO_PREVIOUS);
             PendingIntent pIntentSkipToPrevious = PendingIntent.getService(context,
@@ -305,31 +330,65 @@ public class MediaNotificationsDisplayerImpl implements MediaNotificationsDispla
                     intentSkipToNext,
                     AndroidUtilsKt.pIntentFlag(PendingIntent.FLAG_UPDATE_CURRENT));
 
-            style.setShowActionsInCompactView(0, 1, 2);
-
-            builder.addAction(R.drawable.ic_skip_previous, getString(R.string.previous_track), pIntentSkipToPrevious)
-                    .addAction(playPauseAction)
-                    .addAction(R.drawable.ic_skip_next, getString(R.string.next_track), pIntentSkipToNext);
-        }
-        if (source instanceof ExternalCompositionSource) {
             Intent intentChangeRepeatMode = new Intent(context, MusicService.class);
             intentChangeRepeatMode.putExtra(REQUEST_CODE, CHANGE_REPEAT_MODE);
-
             PendingIntent pIntentChangeRepeatMode = PendingIntent.getService(context,
                     CHANGE_REPEAT_MODE,
                     intentChangeRepeatMode,
                     AndroidUtilsKt.pIntentFlag(PendingIntent.FLAG_UPDATE_CURRENT));
-
             NotificationCompat.Action changeRepeatModeAction = new NotificationCompat.Action(
                     getRepeatModeIcon(repeatMode),
                     getString(getRepeatModeText(repeatMode)),
                     pIntentChangeRepeatMode);
 
+            style.setShowActionsInCompactView(1, 2, 3);
 
-            style.setShowActionsInCompactView(0, 1);
+            builder.addAction(changeRandomModeAction)
+                    .addAction(R.drawable.ic_skip_previous, getString(R.string.previous_track), pIntentSkipToPrevious)
+                    .addAction(playPauseAction)
+                    .addAction(R.drawable.ic_skip_next, getString(R.string.next_track), pIntentSkipToNext)
+                    .addAction(changeRepeatModeAction);
+        }
+        if (source instanceof ExternalCompositionSource) {
+            Intent intentChangeRepeatMode = new Intent(context, MusicService.class);
+            intentChangeRepeatMode.putExtra(REQUEST_CODE, CHANGE_REPEAT_MODE);
+            PendingIntent pIntentChangeRepeatMode = PendingIntent.getService(context,
+                    CHANGE_REPEAT_MODE,
+                    intentChangeRepeatMode,
+                    AndroidUtilsKt.pIntentFlag(PendingIntent.FLAG_UPDATE_CURRENT));
+            NotificationCompat.Action changeRepeatModeAction = new NotificationCompat.Action(
+                    getRepeatModeIcon(repeatMode),
+                    getString(getRepeatModeText(repeatMode)),
+                    pIntentChangeRepeatMode);
+
+            Intent intentRewind = new Intent(context, MusicService.class);
+            intentRewind.putExtra(REQUEST_CODE, REWIND);
+            PendingIntent pIntentRewind = PendingIntent.getService(context,
+                    REWIND,
+                    intentRewind,
+                    AndroidUtilsKt.pIntentFlag(PendingIntent.FLAG_UPDATE_CURRENT));
+
+            Intent intentFastForward = new Intent(context, MusicService.class);
+            intentFastForward.putExtra(REQUEST_CODE, FAST_FORWARD);
+            PendingIntent pIntentFastForward = PendingIntent.getService(context,
+                    FAST_FORWARD,
+                    intentFastForward,
+                    AndroidUtilsKt.pIntentFlag(PendingIntent.FLAG_UPDATE_CURRENT));
+
+            Intent intentClose = new Intent(context, MusicService.class);
+            intentClose.putExtra(REQUEST_CODE, CLOSE);
+            PendingIntent pIntentClose = PendingIntent.getService(context,
+                    CLOSE,
+                    intentClose,
+                    AndroidUtilsKt.pIntentFlag(PendingIntent.FLAG_UPDATE_CURRENT));
+
+            style.setShowActionsInCompactView(1, 2, 3);
 
             builder.addAction(changeRepeatModeAction)
-                    .addAction(playPauseAction);
+                    .addAction(R.drawable.ic_rewind, getString(R.string.rewind), pIntentRewind)
+                    .addAction(playPauseAction)
+                    .addAction(R.drawable.ic_fast_forward, getString(R.string.fast_forward), pIntentFastForward)
+                    .addAction(R.drawable.ic_close, getString(R.string.close), pIntentClose);
         }
 
         builder.setStyle(style);
@@ -402,17 +461,20 @@ public class MediaNotificationsDisplayerImpl implements MediaNotificationsDispla
         final @Nullable CompositionSource source;
         final MediaSessionCompat mediaSession;
         final int repeatMode;
+        final boolean randomMode;
         final MusicNotificationSetting notificationSetting;
 
         public NotificationInfoState(int isPlayingState,
                                      @Nullable CompositionSource source,
                                      MediaSessionCompat mediaSession,
                                      int repeatMode,
+                                     boolean randomMode,
                                      MusicNotificationSetting notificationSetting) {
             this.isPlayingState = isPlayingState;
             this.source = source;
             this.mediaSession = mediaSession;
             this.repeatMode = repeatMode;
+            this.randomMode = randomMode;
             this.notificationSetting = notificationSetting;
         }
     }

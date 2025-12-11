@@ -3,6 +3,7 @@ package com.github.anrimian.musicplayer.data.database;
 import android.annotation.SuppressLint;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 
@@ -16,6 +17,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase;
 import com.github.anrimian.musicplayer.data.database.converters.EnumConverter;
 import com.github.anrimian.musicplayer.data.database.dao.ignoredfolders.IgnoredFoldersDao;
 import com.github.anrimian.musicplayer.data.database.mappers.CompositionCorruptionDetector;
+import com.github.anrimian.musicplayer.data.repositories.state.UiStateRepositoryImpl;
 import com.github.anrimian.musicplayer.data.storage.providers.albums.StorageAlbum;
 import com.github.anrimian.musicplayer.data.storage.providers.albums.StorageAlbumsProvider;
 import com.github.anrimian.musicplayer.data.storage.providers.music.StorageFullComposition;
@@ -24,6 +26,7 @@ import com.github.anrimian.musicplayer.data.utils.Permissions;
 import com.github.anrimian.musicplayer.data.utils.db.CursorWrapper;
 import com.github.anrimian.musicplayer.domain.interactors.playlists.validators.PlayListFileNameValidator;
 import com.github.anrimian.musicplayer.domain.utils.FileUtils;
+import com.github.anrimian.musicplayer.domain.utils.TextUtils;
 
 import java.util.Date;
 import java.util.HashMap;
@@ -32,6 +35,57 @@ import java.util.Map;
 
 @SuppressLint("RestrictedApi")
 class Migrations {
+
+    static Migration MIGRATION_16_17 = new Migration(16, 17) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("CREATE TABLE IF NOT EXISTS `compositions_temp` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `artistId` INTEGER, `albumId` INTEGER, `folderId` INTEGER, `storageId` INTEGER, `title` TEXT, `trackNumber` INTEGER, `discNumber` INTEGER, `comment` TEXT, `lyrics` TEXT, `fileName` TEXT, `duration` INTEGER NOT NULL, `size` INTEGER NOT NULL, `dateAdded` INTEGER, `dateModified` INTEGER, `pathModifyTime` INTEGER, `lastScanDate` INTEGER NOT NULL, `coverModifyTime` INTEGER NOT NULL, `corruptionType` TEXT, `initialSource` INTEGER NOT NULL, FOREIGN KEY(`artistId`) REFERENCES `artists`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , FOREIGN KEY(`albumId`) REFERENCES `albums`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION , FOREIGN KEY(`folderId`) REFERENCES `folders`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION )");
+            database.execSQL(
+                    "INSERT INTO `compositions_temp` (" +
+                            "id, artistId, albumId, folderId, storageId, title, trackNumber, " +
+                            "discNumber, comment, lyrics, fileName, duration, size, dateAdded, " +
+                            "dateModified, pathModifyTime, lastScanDate, coverModifyTime, corruptionType, " +
+                            "initialSource" +
+                            ") SELECT " +
+                            "id, artistId, albumId, folderId, storageId, title, trackNumber, " +
+                            "discNumber, comment, lyrics, fileName, duration, size, dateAdded, " +
+                            "dateModified, NULL, lastScanDate, coverModifyTime, corruptionType, " +
+                            "initialSource FROM compositions"
+            );
+
+            database.execSQL("DROP TABLE `compositions`");
+            database.execSQL("ALTER TABLE `compositions_temp` RENAME TO `compositions`");
+
+            database.execSQL("CREATE  INDEX `index_compositions_folderId` ON compositions (`folderId`)");
+            database.execSQL("CREATE  INDEX `index_compositions_artistId` ON compositions (`artistId`)");
+            database.execSQL("CREATE  INDEX `index_compositions_albumId` ON compositions (`albumId`)");
+        }
+    };
+
+
+    static Migration getMigration15_16(Context context) {
+        return new Migration(15, 16) {
+            @Override
+            public void migrate(@NonNull SupportSQLiteDatabase db) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS `track_positions` (`queueItemId` INTEGER NOT NULL, `trackPosition` INTEGER NOT NULL, `writeTime` INTEGER NOT NULL, PRIMARY KEY(`queueItemId`), FOREIGN KEY(`queueItemId`) REFERENCES `play_queue`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )");
+
+                SharedPreferences prefs = context.getSharedPreferences("ui_preferences", Context.MODE_PRIVATE);
+                long itemId = prefs.getLong("current_play_queue_id", UiStateRepositoryImpl.NO_ITEM);
+                if (itemId == UiStateRepositoryImpl.NO_ITEM) {
+                    return;
+                }
+                long position = prefs.getLong("track_position", 0L);
+                if (position != 0L) {
+                    db.execSQL("INSERT INTO track_positions (queueItemId, trackPosition, writeTime) VALUES (" + itemId + ", + " + position + ", " + System.currentTimeMillis() + ")");
+                }
+                prefs.edit()
+                        .putLong("library_genres_position", prefs.getLong("library_agenres_position", 0L))
+                        .remove("library_agenres_position")
+                        .remove("track_position")
+                        .apply();
+            }
+        };
+    }
 
     static Migration MIGRATION_14_15 = new Migration(14, 15) {
         @Override
@@ -49,7 +103,7 @@ class Migrations {
                 CursorWrapper cursorWrapper = new CursorWrapper(c);
                 while (c.moveToNext()) {
                     String name = cursorWrapper.getString("name");
-                    if (name == null) {
+                    if (TextUtils.isEmpty(name)) {
                         continue;
                     }
                     String newName = PlayListFileNameValidator.INSTANCE.getFormattedPlaylistName(name);

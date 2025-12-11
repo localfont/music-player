@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+
+    <style name="AdvancedToolbarStyle">
+        <item name="android:layout_height">?actionBarSize</item>
+        <item name="android:background">?colorPrimary</item>
+        <item name="android:theme">@style/ToolbarStyle</item>
+    </style>
+
     <style name="Toolbar.Button" parent="AppTheme">
         <item name="android:layout_width">48dp</item>
         <item name="android:layout_height">48dp</item>
@@ -59,9 +66,14 @@
     </style>
 
     <style name="ToolbarTextStyle" parent="@style/TextAppearance.Widget.AppCompat.Toolbar.Subtitle">
-        <item name="android:textColor">?android:attr/textColorPrimaryInverse</item>
+        <item name="android:textColor">?attr/toolbarTextColorPrimary</item>
         <item name="android:ellipsize">end</item>
         <item name="android:textSize">13sp</item>
         <item name="android:textAlignment">viewStart</item>
+    </style>
+
+    <style name="ToolbarShadowViewStyle">
+        <item name="android:layout_height">@dimen/toolbar_shadow_height</item>
+        <item name="android:background">@drawable/bg_shadow_bottom</item>
     </style>
 </resources>

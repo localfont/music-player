@@ -1,6 +1,6 @@
 package com.github.anrimian.musicplayer.di.app.library.artists.items
 
-import com.github.anrimian.filesync.SyncInteractor
+import com.github.anrimian.fsync.SyncInteractor
 import com.github.anrimian.musicplayer.di.app.SchedulerModule
 import com.github.anrimian.musicplayer.domain.interactors.library.LibraryArtistsInteractor
 import com.github.anrimian.musicplayer.domain.interactors.player.LibraryPlayerInteractor

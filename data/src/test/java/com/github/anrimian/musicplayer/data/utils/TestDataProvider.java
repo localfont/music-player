@@ -2,7 +2,6 @@ package com.github.anrimian.musicplayer.data.utils;
 
 import androidx.collection.LongSparseArray;
 
-import com.github.anrimian.musicplayer.data.database.entities.composition.CompositionEntity;
 import com.github.anrimian.musicplayer.data.database.entities.play_queue.PlayQueueEntity;
 import com.github.anrimian.musicplayer.data.storage.providers.music.StorageComposition;
 import com.github.anrimian.musicplayer.data.storage.providers.music.StorageFullComposition;
@@ -10,8 +9,6 @@ import com.github.anrimian.musicplayer.data.storage.providers.playlists.StorageP
 import com.github.anrimian.musicplayer.data.storage.providers.playlists.StoragePlayListItem;
 import com.github.anrimian.musicplayer.domain.models.composition.Composition;
 import com.github.anrimian.musicplayer.domain.models.composition.InitialSource;
-import com.github.anrimian.musicplayer.domain.models.play_queue.PlayQueueEvent;
-import com.github.anrimian.musicplayer.domain.models.play_queue.PlayQueueItem;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -23,35 +20,6 @@ import java.util.Map;
  * Created on 16.04.2018.
  */
 public class TestDataProvider {
-
-    public static CompositionEntity composition(Long artistId,
-                                                Long albumId,
-                                                String title,
-                                                Long folderId) {
-        return new CompositionEntity(
-                artistId,
-                albumId,
-                folderId,
-                title,
-                null,
-                null,
-                null,
-                null,
-                "test file path",
-                100L,
-                100L,
-                null,
-                new Date(),
-                new Date(),
-                new Date(),
-                new Date(),
-                null,
-                InitialSource.LOCAL);
-    }
-
-    public static CompositionEntity composition(Long artistId, Long albumId, String title) {
-        return composition(artistId, albumId, title, null);
-    }
 
     public static List<StoragePlayListItem> getFakeStoragePlayListItems() {
         List<StoragePlayListItem> items = new ArrayList<>();
@@ -81,12 +49,14 @@ public class TestDataProvider {
     }
 
     public static Composition fakeComposition(long id) {
-        return new Composition(null,
+        return new Composition(
+                id,
                 "fileName",
+                null,
                 null,
                 0,
                 0,
-                id,
+                null,
                 ++id,
                 new Date(0),
                 new Date(0),
@@ -107,14 +77,6 @@ public class TestDataProvider {
             compositions.put(i, composition);
         }
         return compositions;
-    }
-
-    public static PlayQueueEvent currentItem(int pos) {
-        return new PlayQueueEvent(new PlayQueueItem(pos, fakeComposition(pos)), 0L);
-    }
-
-    public static PlayQueueEvent currentItem(int itemId, int compositionId) {
-        return new PlayQueueEvent(new PlayQueueItem(itemId, fakeComposition(compositionId)), 0L);
     }
 
     public static StoragePlayList storagePlayList(long i) {

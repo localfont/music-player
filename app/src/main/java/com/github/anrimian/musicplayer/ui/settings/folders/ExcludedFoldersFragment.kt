@@ -14,6 +14,7 @@ import com.github.anrimian.musicplayer.ui.common.format.MessagesUtils
 import com.github.anrimian.musicplayer.ui.common.format.showSnackbar
 import com.github.anrimian.musicplayer.ui.common.toolbar.AdvancedToolbar
 import com.github.anrimian.musicplayer.ui.settings.folders.view.ExcludedFolderAdapter
+import com.github.anrimian.musicplayer.ui.utils.applyBottomInsets
 import com.github.anrimian.musicplayer.ui.utils.fragments.navigation.FragmentNavigationListener
 import com.github.anrimian.musicplayer.ui.utils.slidr.SlidrPanel
 import com.google.android.material.snackbar.Snackbar
@@ -41,6 +42,9 @@ class ExcludedFoldersFragment : MvpAppCompatFragment(), ExcludedFoldersView,
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        binding.rvExcludedFolders.applyBottomInsets()
+        binding.progressStateView.applyBottomInsets()
+
         val toolbar = requireActivity().findViewById<AdvancedToolbar>(R.id.toolbar)
         toolbar.setTitle(R.string.excluded_folders)
         toolbar.setSubtitle(null)
@@ -50,7 +54,7 @@ class ExcludedFoldersFragment : MvpAppCompatFragment(), ExcludedFoldersView,
         binding.rvExcludedFolders.adapter = adapter
         binding.rvExcludedFolders.layoutManager = LinearLayoutManager(requireContext())
 
-        SlidrPanel.simpleSwipeBack(binding.clContainer, this, toolbar::onStackFragmentSlided)
+        SlidrPanel.simpleSwipeBack(binding.clContainer, this, toolbar::setNavigationButtonProgress)
     }
 
     override fun onFragmentResumed() {

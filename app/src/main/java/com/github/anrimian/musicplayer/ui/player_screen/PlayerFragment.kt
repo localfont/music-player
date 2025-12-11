@@ -6,27 +6,18 @@ import android.view.LayoutInflater
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
-import android.widget.LinearLayout
-import androidx.annotation.DrawableRes
-import androidx.appcompat.app.ActionBarDrawerToggle
-import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.graphics.drawable.DrawerArrowDrawable
-import androidx.constraintlayout.motion.widget.MotionLayout
 import androidx.core.view.GravityCompat
-import androidx.core.view.updateLayoutParams
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.Fragment
-import com.github.anrimian.filesync.models.state.file.FileSyncState
+import com.github.anrimian.fsync.models.state.file.FileSyncState
 import com.github.anrimian.musicplayer.Constants
 import com.github.anrimian.musicplayer.Constants.Tags
 import com.github.anrimian.musicplayer.R
 import com.github.anrimian.musicplayer.data.utils.Permissions
-import com.github.anrimian.musicplayer.databinding.FragmentDrawerBinding
-import com.github.anrimian.musicplayer.databinding.PartialDetailedMusicBinding
+import com.github.anrimian.musicplayer.databinding.FragmentPlayerBinding
 import com.github.anrimian.musicplayer.databinding.PartialDrawerHeaderBinding
-import com.github.anrimian.musicplayer.databinding.PartialQueueToolbarBinding
 import com.github.anrimian.musicplayer.di.Components
-import com.github.anrimian.musicplayer.domain.interactors.sleep_timer.NO_TIMER
+import com.github.anrimian.musicplayer.domain.interactors.player.ActionState
 import com.github.anrimian.musicplayer.domain.models.Screens
 import com.github.anrimian.musicplayer.domain.models.composition.Composition
 import com.github.anrimian.musicplayer.domain.models.composition.DeletedComposition
@@ -34,25 +25,22 @@ import com.github.anrimian.musicplayer.domain.models.play_queue.PlayQueueItem
 import com.github.anrimian.musicplayer.domain.models.player.modes.RepeatMode
 import com.github.anrimian.musicplayer.domain.models.scanner.FileScannerState
 import com.github.anrimian.musicplayer.domain.models.scanner.Running
-import com.github.anrimian.musicplayer.domain.models.utils.CompositionHelper
 import com.github.anrimian.musicplayer.domain.models.volume.VolumeState
 import com.github.anrimian.musicplayer.ui.about.AboutAppFragment
-import com.github.anrimian.musicplayer.ui.common.compat.CompatUtils
+import com.github.anrimian.musicplayer.ui.common.applyDrawerHeaderInsets
+import com.github.anrimian.musicplayer.ui.common.attachBackPressedCallback
+import com.github.anrimian.musicplayer.ui.common.dialogs.composition.showCompositionPopupMenu
 import com.github.anrimian.musicplayer.ui.common.dialogs.shareComposition
 import com.github.anrimian.musicplayer.ui.common.dialogs.showConfirmDeleteDialog
 import com.github.anrimian.musicplayer.ui.common.dialogs.speed.SpeedSelectorDialogFragment
 import com.github.anrimian.musicplayer.ui.common.error.ErrorCommand
-import com.github.anrimian.musicplayer.ui.common.format.FormatUtils
 import com.github.anrimian.musicplayer.ui.common.format.MessagesUtils
-import com.github.anrimian.musicplayer.ui.common.format.getVolumeIcon
-import com.github.anrimian.musicplayer.ui.common.format.showFileSyncState
-import com.github.anrimian.musicplayer.ui.common.getNavigationViewPrimaryColorLight
+import com.github.anrimian.musicplayer.ui.common.format.showSnackbar
 import com.github.anrimian.musicplayer.ui.common.menu.PopupMenuWindow
 import com.github.anrimian.musicplayer.ui.common.menu.showVolumePopup
 import com.github.anrimian.musicplayer.ui.common.navigation.ScreensMap
-import com.github.anrimian.musicplayer.ui.common.toolbar.AdvancedToolbar
-import com.github.anrimian.musicplayer.ui.common.view.onRewindHold
-import com.github.anrimian.musicplayer.ui.common.view.setSmallDrawableStart
+import com.github.anrimian.musicplayer.ui.common.toolbar.ToolbarBackgroundDrawable
+import com.github.anrimian.musicplayer.ui.common.view.attachSystemBarsColor
 import com.github.anrimian.musicplayer.ui.editor.common.DeleteErrorHandler
 import com.github.anrimian.musicplayer.ui.editor.common.ErrorHandler
 import com.github.anrimian.musicplayer.ui.editor.composition.CompositionEditorActivity
@@ -64,32 +52,37 @@ import com.github.anrimian.musicplayer.ui.library.common.library.BaseLibraryFrag
 import com.github.anrimian.musicplayer.ui.library.common.library.BaseLibraryPresenter
 import com.github.anrimian.musicplayer.ui.library.compositions.LibraryCompositionsFragment
 import com.github.anrimian.musicplayer.ui.library.folders.root.LibraryFoldersRootFragment
-import com.github.anrimian.musicplayer.ui.library.folders.root.newLibraryFoldersRootFragment
 import com.github.anrimian.musicplayer.ui.library.genres.items.GenreItemsFragment
 import com.github.anrimian.musicplayer.ui.library.genres.list.GenresListFragment
 import com.github.anrimian.musicplayer.ui.main.setup.SetupFragment
 import com.github.anrimian.musicplayer.ui.player_screen.lyrics.LyricsFragment
 import com.github.anrimian.musicplayer.ui.player_screen.queue.PlayQueueFragment
-import com.github.anrimian.musicplayer.ui.player_screen.view.drawer.DrawerLockStateProcessor
+import com.github.anrimian.musicplayer.ui.player_screen.view.wrappers.NavigationDrawerWrapper
 import com.github.anrimian.musicplayer.ui.player_screen.view.wrappers.PlayerPanelWrapper
 import com.github.anrimian.musicplayer.ui.player_screen.view.wrappers.PlayerPanelWrapperImpl
 import com.github.anrimian.musicplayer.ui.player_screen.view.wrappers.TabletPlayerPanelWrapper
-import com.github.anrimian.musicplayer.ui.player_screen.view.wrappers.attachPlayerPagerWrapper
+import com.github.anrimian.musicplayer.ui.player_screen.view.wrappers.ToolbarNavigationWrapper
 import com.github.anrimian.musicplayer.ui.playlist_screens.choose.ChoosePlayListDialogFragment
 import com.github.anrimian.musicplayer.ui.playlist_screens.playlist.PlayListFragment
 import com.github.anrimian.musicplayer.ui.playlist_screens.playlists.PlayListsFragment
 import com.github.anrimian.musicplayer.ui.settings.SettingsFragment
 import com.github.anrimian.musicplayer.ui.sleep_timer.SleepTimerDialogFragment
 import com.github.anrimian.musicplayer.ui.utils.AndroidUtils
-import com.github.anrimian.musicplayer.ui.utils.ViewUtils.animateVisibility
-import com.github.anrimian.musicplayer.ui.utils.fragments.BackButtonListener
+import com.github.anrimian.musicplayer.ui.utils.addDrawerStateListener
+import com.github.anrimian.musicplayer.ui.utils.applyTopInsets
+import com.github.anrimian.musicplayer.ui.utils.attachBackPressedCallback
+import com.github.anrimian.musicplayer.ui.utils.attrColor
 import com.github.anrimian.musicplayer.ui.utils.fragments.DialogFragmentRunner
 import com.github.anrimian.musicplayer.ui.utils.fragments.navigation.FragmentNavigation
+import com.github.anrimian.musicplayer.ui.utils.fragments.navigation.attachBackPressedCallback
 import com.github.anrimian.musicplayer.ui.utils.fragments.safeShow
+import com.github.anrimian.musicplayer.ui.utils.ignoreBottomInsets
+import com.github.anrimian.musicplayer.ui.utils.isLandscape
+import com.github.anrimian.musicplayer.ui.utils.isTablet
 import com.github.anrimian.musicplayer.ui.utils.moveToParent
+import com.github.anrimian.musicplayer.ui.utils.onPageSelected
 import com.github.anrimian.musicplayer.ui.utils.reduceDragSensitivityBy
-import com.github.anrimian.musicplayer.ui.utils.views.drawer.SimpleDrawerListener
-import com.github.anrimian.musicplayer.ui.utils.views.seek_bar.SeekBarViewWrapper
+import com.github.anrimian.musicplayer.ui.utils.views.view_pager.FragmentBuilder
 import com.github.anrimian.musicplayer.ui.utils.views.view_pager.FragmentPagerAdapter
 import com.google.android.material.snackbar.Snackbar
 import io.reactivex.rxjava3.disposables.CompositeDisposable
@@ -98,7 +91,7 @@ import moxy.ktx.moxyPresenter
 /**
  * Created on 19.10.2017.
  */
-class PlayerFragment : BaseLibraryFragment(), BackButtonListener, PlayerView {
+class PlayerFragment : BaseLibraryFragment(), PlayerView {
 
     companion object {
         private const val NO_ITEM = -1
@@ -117,137 +110,130 @@ class PlayerFragment : BaseLibraryFragment(), BackButtonListener, PlayerView {
 
     private val presenter by moxyPresenter { Components.getLibraryComponent().playerPresenter() }
 
-    private lateinit var binding: FragmentDrawerBinding
-    private lateinit var panelBinding: PartialDetailedMusicBinding
+    private lateinit var binding: FragmentPlayerBinding
     private lateinit var drawerHeaderBinding: PartialDrawerHeaderBinding
-    private lateinit var toolbarPlayQueueBinding: PartialQueueToolbarBinding
-
-    private lateinit var toolbar: AdvancedToolbar
 
     private var selectedDrawerItemId = NO_ITEM
     private var itemIdToStart = NO_ITEM
 
-    private lateinit var seekBarViewWrapper: SeekBarViewWrapper
-    private lateinit var drawerLockStateProcessor: DrawerLockStateProcessor
 
     private val viewDisposable = CompositeDisposable()
 
     private lateinit var navigation: FragmentNavigation
+    private lateinit var navigationDrawerWrapper: NavigationDrawerWrapper
+    private lateinit var toolbarNavigationWrapper: ToolbarNavigationWrapper
     private lateinit var playerPanelWrapper: PlayerPanelWrapper
+
+    private val pagerFragments = ArrayList<FragmentBuilder>()
+    private lateinit var playerPagerAdapter: FragmentPagerAdapter
 
     private lateinit var deletingErrorHandler: ErrorHandler
 
     private lateinit var choosePlayListFragmentRunner: DialogFragmentRunner<ChoosePlayListDialogFragment>
     private lateinit var speedDialogFragmentRunner: DialogFragmentRunner<SpeedSelectorDialogFragment>
 
-    private var previousCoverComposition: Composition? = null
-
     override fun getLibraryPresenter(): BaseLibraryPresenter<*> = presenter
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setHasOptionsMenu(true)
-    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?,
     ): View {
-        binding = FragmentDrawerBinding.inflate(inflater, container, false)
-        toolbar = binding.toolbar.root
-        toolbarPlayQueueBinding = binding.toolbarPlayQueue
-        panelBinding = binding.clMusicPanel!!
+        binding = FragmentPlayerBinding.inflate(inflater, container, false)
         return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        AndroidUtils.setNavigationBarColorAttr(requireActivity(), R.attr.playerPanelBackground)
 
-        toolbar.initializeViews(requireActivity().window)
-        toolbar.setupWithActivity(requireActivity() as AppCompatActivity)
+        binding.toolbar.applyTopInsets()
+        binding.toolbarPlayQueue.applyTopInsets()
+        if (!requireContext().isLandscape() || requireContext().isTablet()) {
+            binding.clPlayerPagerContainer.ignoreBottomInsets()//for snackbars
+        }
+        requireActivity().attachSystemBarsColor()
 
         navigation = FragmentNavigation.from(childFragmentManager)
-        navigation.initialize(binding.drawerFragmentContainer!!, savedInstanceState)
+        navigation.initialize(binding.drawerFragmentContainer, savedInstanceState)
         navigation.checkForEqualityOnReplace(true)
+        navigation.attachBackPressedCallback(requireActivity())
         navigation.setExitAnimation(R.anim.anim_slide_out_right)
         navigation.setEnterAnimation(R.anim.anim_slide_in_right)
         navigation.setRootExitAnimation(R.anim.anim_alpha_disappear)
 
-        drawerLockStateProcessor = DrawerLockStateProcessor(binding.drawer)
-        drawerLockStateProcessor.setupWithNavigation(navigation)
+        navigationDrawerWrapper = NavigationDrawerWrapper(binding.drawer)
+        navigationDrawerWrapper.setupWithNavigation(navigation)
         viewDisposable.add(
-            toolbar.getSearchModeObservable().subscribe(drawerLockStateProcessor::onSearchModeChanged)
+            binding.toolbar.getSearchModeObservable()
+                .subscribe(navigationDrawerWrapper::onSearchModeChanged)
         )
         viewDisposable.add(
-            toolbar.getSelectionModeObservable().subscribe(drawerLockStateProcessor::onSelectionModeChanged)
+            binding.toolbar.getSelectionModeObservable()
+                .subscribe(navigationDrawerWrapper::onSelectionModeChanged)
+        )
+        binding.toolbar.attachBackPressedCallback(requireActivity())
+
+        val isLargeLand = binding.clBottomSheetContainer == null
+        var isBottomSheetExpanded = !isLargeLand && presenter.isPlayerPanelOpened()
+        if (requireArguments().getBoolean(Constants.Arguments.OPEN_PLAYER_PANEL_ARG)) {
+            requireArguments().remove(Constants.Arguments.OPEN_PLAYER_PANEL_ARG)
+            presenter.onOpenPlayerPanelClicked()
+            isBottomSheetExpanded = true
+        }
+        toolbarNavigationWrapper = ToolbarNavigationWrapper(
+            binding.toolbar,
+            navigation,
+            isBottomSheetExpanded,
+            this::onNavigationClick
         )
 
-        val mlBottomSheet = binding.root.findViewById<MotionLayout>(R.id.ml_bottom_sheet)
-        playerPanelWrapper = if (mlBottomSheet == null) {
+        playerPanelWrapper = if (binding.clBottomSheetContainer == null) {
             TabletPlayerPanelWrapper(
-                view,
-                toolbar,
-                drawerLockStateProcessor::onBottomSheetOpened
+                binding.controlPanelView,
+                toolbarNavigationWrapper,
+                navigationDrawerWrapper::onBottomSheetOpened
             )
         } else {
             PlayerPanelWrapperImpl(
-                view,
                 binding,
-                panelBinding,
-                mlBottomSheet,
                 requireActivity(),
+                toolbarNavigationWrapper,
                 savedInstanceState,
                 presenter::onBottomPanelCollapsed,
                 presenter::onBottomPanelExpanded,
-                drawerLockStateProcessor::onBottomSheetOpened
+                navigationDrawerWrapper::onBottomSheetOpened
             )
         }
 
         binding.navigationView.setNavigationItemSelectedListener(this::onNavigationItemSelected)
         val headerView = binding.navigationView.inflateHeaderView(R.layout.partial_drawer_header)
-        headerView.setBackgroundColor(requireContext().getNavigationViewPrimaryColorLight())
-        headerView.updateLayoutParams<LinearLayout.LayoutParams> {
-            height += AndroidUtils.getStatusBarHeight(requireContext())
-        }
-        drawerHeaderBinding = PartialDrawerHeaderBinding.bind(headerView)
-
-        val drawerToggle = ActionBarDrawerToggle(
-            requireActivity(),
-            binding.drawer,
-            R.string.open_drawer,
-            R.string.close_drawer
+        headerView.background = ToolbarBackgroundDrawable(
+            attrColor(R.attr.colorPrimary),
+            attrColor(android.R.attr.statusBarColor)
         )
-        val drawerArrowDrawable = createDrawerArrowDrawable()
-        drawerToggle.drawerArrowDrawable = drawerArrowDrawable
-        binding.drawer.addDrawerListener(SimpleDrawerListener(this::onDrawerClosed))
+        headerView.applyDrawerHeaderInsets()
+        drawerHeaderBinding = PartialDrawerHeaderBinding.bind(headerView)
+        binding.drawer.attachBackPressedCallback(requireActivity())
+        binding.drawer.addDrawerStateListener(onDrawerClosed = { onDrawerClosed() })
 
-        toolbar.setupWithNavigation(navigation, drawerArrowDrawable) {
-            playerPanelWrapper.isBottomPanelExpanded
-        }
+        binding.controlPanelView.onSkipToPreviousClick { presenter.onSkipToPreviousButtonClicked() }
+        binding.controlPanelView.onSkipToPreviousHold(presenter::onFastSeekBackwardCalled)
+        binding.controlPanelView.onSkipToNextClick { presenter.onSkipToNextButtonClicked() }
+        binding.controlPanelView.onSkipToNextHold(presenter::onFastSeekForwardCalled)
 
-        panelBinding.ivSkipToPrevious.setOnClickListener { presenter.onSkipToPreviousButtonClicked() }
-        panelBinding.ivSkipToPrevious.onRewindHold(presenter::onFastSeekBackwardCalled)
-        panelBinding.ivSkipToNext.setOnClickListener { presenter.onSkipToNextButtonClicked() }
-        panelBinding.ivSkipToNext.onRewindHold(presenter::onFastSeekForwardCalled)
+        binding.controlPanelView.onPanelClick { openPlayerPanel() }
 
-        panelBinding.btnActionsMenu.setOnClickListener(this::onCompositionMenuClicked)
-        panelBinding.topPanel.setOnClickListener { openPlayerPanel() }
-
-        panelBinding.tvVolume.setOnClickListener { v ->
+        binding.controlPanelView.onVolumeButtonClick { v ->
             val gravity = resources.getInteger(R.integer.volume_popup_panel_gravity)
             showVolumePopup(v, gravity)
         }
+        binding.controlPanelView.onRandomModeClick { presenter.onChangeRandomModeClicked() }
 
-        seekBarViewWrapper = SeekBarViewWrapper(panelBinding.sbTrackState)
-        seekBarViewWrapper.setProgressChangeListener(presenter::onTrackRewoundTo)
-        seekBarViewWrapper.setOnSeekStartListener(presenter::onSeekStart)
-        seekBarViewWrapper.setOnSeekStopListener(presenter::onSeekStop)
-
-        CompatUtils.setOutlineTextButtonStyle(panelBinding.tvPlaybackSpeed)
-        CompatUtils.setOutlineTextButtonStyle(panelBinding.tvSleepTime)
-        CompatUtils.setOutlineTextButtonStyle(panelBinding.tvVolume)
+        binding.controlPanelView.setSeekbarListeners(
+            presenter::onTrackRewoundTo,
+            presenter::onSeekStart,
+            presenter::onSeekStop
+        )
 
         deletingErrorHandler = DeleteErrorHandler(
             this,
@@ -264,11 +250,6 @@ class PlayerFragment : BaseLibraryFragment(), BackButtonListener, PlayerView {
             fragment.setSpeedChangeListener(presenter::onPlaybackSpeedSelected)
         }
 
-        if (requireArguments().getBoolean(Constants.Arguments.OPEN_PLAYER_PANEL_ARG)) {
-            requireArguments().remove(Constants.Arguments.OPEN_PLAYER_PANEL_ARG)
-            openPlayerPanel()
-        }
-
         if (!Permissions.hasFilePermission(requireContext())) {
             parentFragmentManager
                 .beginTransaction()
@@ -277,20 +258,17 @@ class PlayerFragment : BaseLibraryFragment(), BackButtonListener, PlayerView {
                 .commit()
         }
 
-        binding.vpPlayContent!!.adapter = FragmentPagerAdapter(
-            this,
-            listOf(::LyricsFragment, ::PlayQueueFragment)
-        )
-        //necessary, otherwise motion layout will be buggy:
-        // tvSubtitle shouldn't be updated when motion layout is in progress state
-        binding.vpPlayContent!!.offscreenPageLimit = 1
-        binding.vpPlayContent!!.reduceDragSensitivityBy(4)
-        attachPlayerPagerWrapper(
-            binding.vpPlayContent!!,
-            toolbarPlayQueueBinding,
-            presenter::onPlayerContentPageChanged
-        )
-        toolbarPlayQueueBinding.flTitleArea.setOnClickListener(this::onPlayerTitleClicked)
+        pagerFragments.add(FragmentBuilder(0, ::LyricsFragment))
+        pagerFragments.add(FragmentBuilder(1, ::PlayQueueFragment))
+        playerPagerAdapter = FragmentPagerAdapter(this, pagerFragments)
+        binding.vpPlayContent.adapter = playerPagerAdapter
+        binding.vpPlayContent.offscreenPageLimit = 1
+        binding.vpPlayContent.reduceDragSensitivityBy(4)
+        binding.vpPlayContent.onPageSelected(presenter::onPlayerContentPageChanged)
+        binding.toolbarPlayQueue.initWithViewPager(binding.vpPlayContent, presenter.getPlayerContentPage())
+        binding.controlPanelView.initWithViewPager(binding.vpPlayContent)
+
+        binding.toolbarPlayQueue.setTitleClickListener(this::onPlayerTitleClicked)
 
         if (savedInstanceState == null) {
             val playlistImportUri = requireArguments().getString(Constants.Arguments.PLAYLIST_IMPORT_ARG)
@@ -329,17 +307,6 @@ class PlayerFragment : BaseLibraryFragment(), BackButtonListener, PlayerView {
         }
     }
 
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        if (item.itemId == android.R.id.home) {
-            if (binding.drawer.getDrawerLockMode(GravityCompat.START) != DrawerLayout.LOCK_MODE_LOCKED_CLOSED) {
-                binding.drawer.openDrawer(GravityCompat.START)
-            } else {
-                onBackPressed()
-            }
-        }
-        return super.onOptionsItemSelected(item)
-    }
-
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         navigation.onSaveInstanceState(outState)
@@ -348,45 +315,28 @@ class PlayerFragment : BaseLibraryFragment(), BackButtonListener, PlayerView {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        toolbar.release()
-        drawerLockStateProcessor.release()
+        toolbarNavigationWrapper.release()
+        navigationDrawerWrapper.release()
         viewDisposable.clear()
-    }
-
-    override fun onBackPressed(): Boolean {
-        if (playerPanelWrapper.isBottomPanelExpanded) {
-            playerPanelWrapper.collapseBottomPanelSmoothly()
-            return true
-        }
-        if (binding.drawer.isDrawerOpen(GravityCompat.START)) {
-            binding.drawer.closeDrawer(GravityCompat.START)
-            return true
-        }
-        val fragment = navigation.fragmentOnTop
-        var processed = (fragment is BackButtonListener && fragment.onBackPressed())
-        if (!processed) {
-            processed = FragmentNavigation.from(childFragmentManager).goBack()
-        }
-        return processed
     }
 
     override fun onStop() {
         super.onStop()
-        AndroidUtils.clearVectorAnimationInfo(panelBinding.ivPlayPause)
+        binding.controlPanelView.clearVectorAnimationInfo()
     }
 
-    override fun getCoordinatorLayout() = binding.clPlayQueueContainer!!
+    override fun getCoordinatorLayout() = binding.clPlayerPagerContainer
 
     override fun setButtonPanelState(expanded: Boolean) {
         if (expanded) {
-            playerPanelWrapper.expandBottomPanel()
+            playerPanelWrapper.expandBottomPanel(true)
         } else {
             playerPanelWrapper.collapseBottomPanel()
         }
     }
 
     override fun showPlayerContentPage(position: Int) {
-        binding.vpPlayContent!!.setCurrentItem(position, false)
+        binding.vpPlayContent.setCurrentItem(position, false)
     }
 
     override fun showDrawerScreen(selectedDrawerScreenId: Int, selectedPlayListScreenId: Long) {
@@ -415,7 +365,7 @@ class PlayerFragment : BaseLibraryFragment(), BackButtonListener, PlayerView {
         val fragments: MutableList<Fragment> = ArrayList()
         when (selectedLibraryScreen) {
             Screens.LIBRARY_COMPOSITIONS -> fragments.add(LibraryCompositionsFragment())
-            Screens.LIBRARY_FOLDERS -> fragments.add(newLibraryFoldersRootFragment())
+            Screens.LIBRARY_FOLDERS -> fragments.add(LibraryFoldersRootFragment.newInstance())
             Screens.LIBRARY_ARTISTS -> {
                 fragments.add(ArtistsListFragment())
                 if (selectedArtistScreenId != 0L) {
@@ -443,111 +393,45 @@ class PlayerFragment : BaseLibraryFragment(), BackButtonListener, PlayerView {
         navigation.newRootFragmentStack(fragments, 0, R.anim.anim_alpha_appear)
     }
 
-    override fun showPlayerState(isPlaying: Boolean) {
-        if (isPlaying) {
-            AndroidUtils.setAnimatedVectorDrawable(panelBinding.ivPlayPause, R.drawable.anim_play_to_pause)
-            panelBinding.ivPlayPause.contentDescription = getString(R.string.pause)
-            panelBinding.ivPlayPause.setOnClickListener { presenter.onStopButtonClicked() }
-        } else {
-            AndroidUtils.setAnimatedVectorDrawable(panelBinding.ivPlayPause, R.drawable.anim_pause_to_play)
-            panelBinding.ivPlayPause.contentDescription = getString(R.string.play)
-            panelBinding.ivPlayPause.setOnClickListener { presenter.onPlayButtonClicked() }
-        }
+    override fun showPlayingState(isPlaying: Boolean) {
+        binding.controlPanelView.showPlayingState(
+            isPlaying,
+            { presenter.onStopButtonClicked() },
+            { presenter.onPlayButtonClicked() }
+        )
     }
 
     override fun showPlayErrorState(errorCommand: ErrorCommand?) {
-        panelBinding.tvError.text = errorCommand?.message
+        binding.controlPanelView.showPlayErrorState(errorCommand)
     }
 
     override fun showCurrentQueueItem(item: PlayQueueItem?) {
-        animateVisibility(binding.bottomSheetTopShadow, View.VISIBLE)
-        setMusicControlsEnabled(item != null)
-        if (item == null) {
-            panelBinding.tvPlayedTime.text = FormatUtils.formatMilliseconds(0)
-            panelBinding.tvTotalTime.text = FormatUtils.formatMilliseconds(0)
-            panelBinding.sbTrackState.progress = 0
-            panelBinding.tvCurrentComposition.setText(R.string.no_current_composition)
-            panelBinding.tvCurrentCompositionAuthor.setText(R.string.unknown_author)
-            val noCompositionMessage = getString(R.string.no_current_composition)
-            panelBinding.topPanel.contentDescription =
-                getString(R.string.now_playing_template, noCompositionMessage)
-            panelBinding.sbTrackState.contentDescription = noCompositionMessage
-            previousCoverComposition = null
-        } else {
-            val composition = item.composition
-            val compositionName = CompositionHelper.formatCompositionName(composition)
-            panelBinding.tvCurrentComposition.text = compositionName
-            panelBinding.tvTotalTime.text = FormatUtils.formatMilliseconds(composition.duration)
-            panelBinding.tvCurrentCompositionAuthor.text =
-                FormatUtils.formatCompositionAuthor(composition, requireContext())
-            seekBarViewWrapper.setMax(composition.duration)
-            panelBinding.topPanel.contentDescription =
-                getString(R.string.now_playing_template, compositionName)
-            panelBinding.sbTrackState.contentDescription = null
-        }
+        binding.controlPanelView.showCurrentQueueItem(item, this::onCompositionMenuClicked)
     }
 
     override fun showCurrentItemCover(item: PlayQueueItem?) {
-        if (item == null) {
-            previousCoverComposition = null
-            panelBinding.ivMusicIcon.setImageResource(R.drawable.ic_music_placeholder)
-            return
-        }
-        val composition = item.composition
-        Components.getAppComponent()
-            .imageLoader()
-            .displayImageInReusableTarget(
-                panelBinding.ivMusicIcon,
-                composition,
-                previousCoverComposition,
-                R.drawable.ic_music_placeholder
-            )
-        previousCoverComposition = composition
+        binding.controlPanelView.showCurrentItemCover(item)
     }
 
     override fun showRepeatMode(mode: Int) {
-        @DrawableRes val iconRes = FormatUtils.getRepeatModeIcon(mode)
-        panelBinding.btnInfinitePlay.setImageResource(iconRes)
-        val description = getString(FormatUtils.getRepeatModeText(mode))
-        panelBinding.btnInfinitePlay.contentDescription = description
-
-        panelBinding.btnInfinitePlay.setOnClickListener { view -> onRepeatModeButtonClicked(view, mode) }
-    }
-
-    override fun showRandomPlayingButton(active: Boolean) {
-        if (active) {
-            AndroidUtils.setAnimatedVectorDrawable(panelBinding.btnRandomPlay, R.drawable.anim_shuffle_off_to_on)
-            panelBinding.btnRandomPlay.setOnClickListener {
-                presenter.onRandomPlayingButtonClicked(false)
-            }
-        } else {
-            AndroidUtils.setAnimatedVectorDrawable(panelBinding.btnRandomPlay, R.drawable.anim_shuffle_on_to_off)
-            panelBinding.btnRandomPlay.setOnClickListener {
-                presenter.onRandomPlayingButtonClicked(true)
-            }
+        binding.controlPanelView.showRepeatMode(mode) { view ->
+            onRepeatModeButtonClicked(view, mode)
         }
     }
 
+    override fun showRandomMode(isActive: Boolean) {
+        binding.controlPanelView.showRandomPlayingButton(isActive)
+    }
+
     override fun showTrackState(currentPosition: Long, duration: Long) {
-        seekBarViewWrapper.setProgress(currentPosition)
-        val formattedTime = FormatUtils.formatMilliseconds(currentPosition)
-        panelBinding.sbTrackState.contentDescription = getString(R.string.position_template, formattedTime)
-        panelBinding.tvPlayedTime.text = formattedTime
-    }
-
-    override fun showShareCompositionDialog(composition: Composition) {
-        shareComposition(this, composition)
-    }
-
-    override fun startEditCompositionScreen(id: Long) {
-        startActivity(CompositionEditorActivity.newIntent(requireContext(), id))
+        binding.controlPanelView.showTrackState(currentPosition, duration)
     }
 
     override fun showDeletedItemMessage() {
         MessagesUtils.makeSnackbar(
-            binding.clPlayQueueContainer!!,
+            binding.clPlayerPagerContainer,
             R.string.queue_item_removed,
-            Snackbar.LENGTH_LONG
+            Snackbar.LENGTH_LONG,
         ).setAction(R.string.cancel, presenter::onRestoreDeletedItemClicked)
             .show()
     }
@@ -564,52 +448,34 @@ class PlayerFragment : BaseLibraryFragment(), BackButtonListener, PlayerView {
 
     override fun showDeleteCompositionError(errorCommand: ErrorCommand) {
         deletingErrorHandler.handleError(errorCommand) {
-            MessagesUtils.makeSnackbar(
-                binding.clPlayQueueContainer!!,
-                getString(R.string.delete_composition_error_template, errorCommand.message),
-                Snackbar.LENGTH_SHORT
-            ).show()
+            binding.clPlayerPagerContainer.showSnackbar(
+                getString(R.string.delete_composition_error_template, errorCommand.message)
+            )
         }
     }
 
     override fun showDeleteCompositionMessage(compositionsToDelete: List<DeletedComposition>) {
         val text = MessagesUtils.getDeleteCompleteMessage(requireActivity(), compositionsToDelete)
-        MessagesUtils.makeSnackbar(binding.clPlayQueueContainer!!, text, Snackbar.LENGTH_SHORT).show()
+        binding.clPlayerPagerContainer.showSnackbar(text)
     }
 
-    override fun displayPlaybackSpeed(speed: Float) {
-        panelBinding.tvPlaybackSpeed.text = getString(R.string.playback_speed_template, speed)
-        panelBinding.tvPlaybackSpeed.setOnClickListener {
+    override fun showPlaybackSpeed(speed: Float) {
+        binding.controlPanelView.showPlaybackSpeed(speed) {
             speedDialogFragmentRunner.show(SpeedSelectorDialogFragment.newInstance(speed))
         }
     }
 
     override fun showSpeedChangeFeatureVisible(visible: Boolean) {
-        panelBinding.tvPlaybackSpeed.visibility = if (visible) View.VISIBLE else View.GONE
+        binding.controlPanelView.showSpeedChangeFeatureVisible(visible)
         if (!visible) {
             speedDialogFragmentRunner.close()
         }
     }
 
     override fun showSleepTimerRemainingTime(remainingMillis: Long) {
-        //setVisibility() doesn't work in motion layout
-        if (remainingMillis == NO_TIMER) {
-            panelBinding.tvSleepTime.text = ""
-            panelBinding.tvSleepTime.background = null
-            panelBinding.tvSleepTime.setCompoundDrawables(null, null, null, null)
-            panelBinding.tvSleepTime.setOnClickListener(null)
-            return
+        binding.controlPanelView.showSleepTimerRemainingTime(remainingMillis) {
+            SleepTimerDialogFragment().safeShow(childFragmentManager)
         }
-        if (!panelBinding.tvSleepTime.hasOnClickListeners()) {
-            //initialize, set visible
-
-            panelBinding.tvSleepTime.setSmallDrawableStart(R.drawable.ic_timer)
-            panelBinding.tvSleepTime.setBackgroundResource(R.drawable.bg_outline_text_button)
-            panelBinding.tvSleepTime.setOnClickListener {
-                SleepTimerDialogFragment().safeShow(childFragmentManager)
-            }
-        }
-        panelBinding.tvSleepTime.text = FormatUtils.formatMilliseconds(remainingMillis)
     }
 
     override fun showFileScannerState(state: FileScannerState) {
@@ -622,53 +488,25 @@ class PlayerFragment : BaseLibraryFragment(), BackButtonListener, PlayerView {
         }
     }
 
-    override fun showCurrentCompositionSyncState(syncState: FileSyncState, item: PlayQueueItem?) {
-        val isFileRemote: Boolean
-        val formattedState: FileSyncState
-        if (item == null) {
-            formattedState = FileSyncState.NotActive
-            isFileRemote = false
-        } else {
-            formattedState = syncState
-            isFileRemote = CompositionHelper.isCompositionFileRemote(item.composition)
-        }
-        showFileSyncState(
-            formattedState,
-            isFileRemote,
-            panelBinding.pvFileState
-        )
-    }
-
-    override fun locateCompositionInFolders(composition: Composition) {
-        playerPanelWrapper.collapseBottomPanelSmoothly {
-            val id = composition.id
-            val currentFragment = navigation.fragmentOnTop
-            if (currentFragment is LibraryFoldersRootFragment) {
-                currentFragment.revealComposition(id)
-            } else {
-                if (selectedDrawerItemId != R.id.menu_library) {
-                    selectedDrawerItemId = R.id.menu_library
-                    binding.navigationView.setCheckedItem(R.id.menu_library)
-                }
-                presenter.onLibraryScreenSelected(Screens.LIBRARY_FOLDERS)
-                startFragment(newLibraryFoldersRootFragment(id))
-            }
-        }
+    override fun showCurrentCompositionSyncState(syncState: FileSyncState?, item: PlayQueueItem?) {
+        binding.controlPanelView.showCurrentCompositionSyncState(syncState, item)
     }
 
     override fun showScreensSwipeEnabled(enabled: Boolean) {
-        binding.vpPlayContent!!.isUserInputEnabled = enabled
+        binding.vpPlayContent.isUserInputEnabled = enabled
     }
 
-    override fun onVolumeChanged(volume: VolumeState) {
-        val volumePercent = 100 * volume.getVolume() / volume.max
-        panelBinding.tvVolume.text = getString(R.string.percentage_template, volumePercent)
-        panelBinding.tvVolume.setSmallDrawableStart(getVolumeIcon(volumePercent))
+    override fun onVolumeChanged(volume: Long) {
+        binding.controlPanelView.showVolume(VolumeState.from(volume))
+    }
+
+    override fun showActionState(actionState: ActionState) {
+        Components.getAppComponent().actionStateBinder().bind(binding.toolbar, actionState)
     }
 
     fun openPlayerPanel() {
         presenter.onOpenPlayerPanelClicked()
-        playerPanelWrapper.openPlayerPanel()
+        playerPanelWrapper.expandBottomPanel(false)
     }
 
     fun openImportPlaylistScreen(uriStr: String) {
@@ -687,23 +525,20 @@ class PlayerFragment : BaseLibraryFragment(), BackButtonListener, PlayerView {
         }
     }
 
-    private fun setMusicControlsEnabled(show: Boolean) {
-        panelBinding.btnActionsMenu.isEnabled = show
-        panelBinding.ivSkipToNext.isEnabled = show
-        panelBinding.ivSkipToPrevious.isEnabled = show
-        panelBinding.ivPlayPause.isEnabled = show
-        panelBinding.btnInfinitePlay.isEnabled = show
-        panelBinding.btnRandomPlay.isEnabled = show
-        panelBinding.sbTrackState.isEnabled = show
-        panelBinding.tvPlaybackSpeed.isEnabled = show
-    }
-
-    @Suppress("unused")
-    private fun onNavigationIconClicked() {
-        if (binding.drawer.getDrawerLockMode(GravityCompat.START) != DrawerLayout.LOCK_MODE_LOCKED_CLOSED) {
-            binding.drawer.openDrawer(GravityCompat.START)
-        } else {
-            onBackPressed()
+    fun locateCompositionInFolders(composition: Composition) {
+        playerPanelWrapper.collapseBottomPanelSmoothly {
+            val id = composition.id
+            val currentFragment = navigation.fragmentOnTop
+            if (currentFragment is LibraryFoldersRootFragment) {
+                currentFragment.revealComposition(id)
+            } else {
+                if (selectedDrawerItemId != R.id.menu_library) {
+                    selectedDrawerItemId = R.id.menu_library
+                    binding.navigationView.setCheckedItem(R.id.menu_library)
+                }
+                presenter.onLibraryScreenSelected(Screens.LIBRARY_FOLDERS)
+                startFragment(LibraryFoldersRootFragment.newInstance(id))
+            }
         }
     }
 
@@ -715,20 +550,16 @@ class PlayerFragment : BaseLibraryFragment(), BackButtonListener, PlayerView {
         navigation.clearFragmentStack(R.anim.anim_alpha_disappear)
     }
 
-    private fun onCompositionMenuClicked(view: View) {
-        PopupMenuWindow.showPopup(view, R.menu.composition_short_actions_menu) { item ->
+    private fun onCompositionMenuClicked(view: View, queueItem: PlayQueueItem) {
+        showCompositionPopupMenu(view, R.menu.composition_short_actions_menu, queueItem) { item ->
             when (item.itemId) {
-                R.id.menu_add_to_playlist -> presenter.onAddCurrentCompositionToPlayListButtonClicked()
-                R.id.menu_edit -> presenter.onEditCompositionButtonClicked()
-                R.id.menu_show_in_folders -> presenter.onShowCurrentCompositionInFoldersClicked()
-                R.id.menu_share -> presenter.onShareCompositionButtonClicked()
-                R.id.menu_delete -> presenter.onDeleteCurrentCompositionButtonClicked()
+                R.id.menu_add_to_playlist -> presenter.onAddQueueItemToPlayListButtonClicked(queueItem)
+                R.id.menu_edit -> startActivity(CompositionEditorActivity.newIntent(requireContext(), queueItem.id))
+                R.id.menu_show_in_folders -> locateCompositionInFolders(queueItem)
+                R.id.menu_share -> shareComposition(this, queueItem)
+                R.id.menu_delete -> presenter.onDeleteCompositionButtonClicked(queueItem)
             }
         }
-    }
-
-    private fun createDrawerArrowDrawable() = DrawerArrowDrawable(requireActivity()).apply {
-        color = AndroidUtils.getColorFromAttr(requireActivity(), R.attr.toolbarTextColorPrimary)
     }
 
     private fun onNavigationItemSelected(item: MenuItem): Boolean {
@@ -778,21 +609,30 @@ class PlayerFragment : BaseLibraryFragment(), BackButtonListener, PlayerView {
     }
 
     private fun onPlayerTitleClicked(view: View) {
-        PopupMenuWindow.showPopup(view, R.menu.player_pager_menu, Gravity.BOTTOM) { item ->
+        val menu = AndroidUtils.createMenu(requireContext(), R.menu.player_pager_menu)
+
+        PopupMenuWindow.showPopup(view, menu, Gravity.BOTTOM) { item ->
             val position = when (item.itemId) {
                 R.id.menu_lyrics -> 0
                 else -> 1
             }
-            binding.vpPlayContent!!.currentItem = position
+            binding.vpPlayContent.currentItem = position
         }
     }
 
     private fun showEditorRequestDeniedMessage() {
-        MessagesUtils.makeSnackbar(
-            binding.clPlayQueueContainer!!,
+        binding.clPlayerPagerContainer.showSnackbar(
             R.string.android_r_edit_file_permission_denied,
             Snackbar.LENGTH_LONG
-        ).show()
+        )
+    }
+
+    private fun onNavigationClick() {
+        if (binding.drawer.getDrawerLockMode(GravityCompat.START) != DrawerLayout.LOCK_MODE_LOCKED_CLOSED) {
+            binding.drawer.openDrawer(GravityCompat.START)
+        } else {
+            requireActivity().onBackPressedDispatcher.onBackPressed()
+        }
     }
 
 }

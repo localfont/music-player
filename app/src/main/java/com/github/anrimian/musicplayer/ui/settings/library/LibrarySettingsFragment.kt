@@ -13,6 +13,7 @@ import com.github.anrimian.musicplayer.ui.common.toolbar.AdvancedToolbar
 import com.github.anrimian.musicplayer.ui.settings.folders.ExcludedFoldersFragment
 import com.github.anrimian.musicplayer.ui.utils.ViewUtils
 import com.github.anrimian.musicplayer.ui.utils.ViewUtils.onCheckChanged
+import com.github.anrimian.musicplayer.ui.utils.applyBottomInsets
 import com.github.anrimian.musicplayer.ui.utils.fragments.navigation.FragmentNavigation
 import com.github.anrimian.musicplayer.ui.utils.fragments.navigation.FragmentNavigationListener
 import com.github.anrimian.musicplayer.ui.utils.slidr.SlidrPanel
@@ -44,6 +45,8 @@ class LibrarySettingsFragment : MvpAppCompatFragment(),
         super.onViewCreated(view, savedInstanceState)
         val toolbar: AdvancedToolbar = requireActivity().findViewById(R.id.toolbar)
 
+        binding.nsvContainer.applyBottomInsets()
+
         navigation = FragmentNavigation.from(parentFragmentManager)
 
         binding.tvExcludedFolders.setOnClickListener {
@@ -63,7 +66,7 @@ class LibrarySettingsFragment : MvpAppCompatFragment(),
             presenter.onSelectMinDurationClicked()
         }
 
-        SlidrPanel.simpleSwipeBack(binding.nsvContainer, this, toolbar::onStackFragmentSlided)
+        SlidrPanel.simpleSwipeBack(binding.nsvContainer, this, toolbar::setNavigationButtonProgress)
     }
 
     override fun onFragmentResumed() {
@@ -101,7 +104,7 @@ class LibrarySettingsFragment : MvpAppCompatFragment(),
         showNumberPickerDialog(
             requireContext(),
             0,
-            60,
+            120,
             currentValue / 1000L
         ) { value -> presenter.onAudioFileMinDurationMillisPicked(value * 1000L) }
     }

@@ -21,6 +21,13 @@
 
     <style name="SeekBarStyle" parent="@style/Widget.AppCompat.SeekBar"/>
 
+    <style name="PlaybackSeekBarStyle" parent="@style/SeekBarStyle">
+        <item name="android:layout_marginLeft">1.5dp</item>
+        <item name="android:layout_marginRight">1.5dp</item>
+        <item name="android:paddingTop">@dimen/content_spacing_margin</item>
+        <item name="android:paddingBottom">@dimen/content_spacing_margin</item>
+    </style>
+
     <style name="VerticalSeekbarStyle" parent="SeekBarStyle">
         <!--wrap_content for api 21 - fixes thumb position-->
         <item name="android:layout_height">wrap_content</item>

@@ -22,6 +22,8 @@ import com.github.anrimian.musicplayer.domain.models.composition.Composition
 import com.github.anrimian.musicplayer.domain.models.playlist.PlayList
 import com.github.anrimian.musicplayer.domain.models.utils.ListPosition
 import com.github.anrimian.musicplayer.domain.utils.toLongArray
+import com.github.anrimian.musicplayer.ui.common.applyFabBottomInsets
+import com.github.anrimian.musicplayer.ui.common.applyLibraryProgressViewOffset
 import com.github.anrimian.musicplayer.ui.common.dialogs.shareCompositions
 import com.github.anrimian.musicplayer.ui.common.dialogs.showConfirmDeleteDialog
 import com.github.anrimian.musicplayer.ui.common.error.ErrorCommand
@@ -35,26 +37,26 @@ import com.github.anrimian.musicplayer.ui.equalizer.EqualizerDialogFragment
 import com.github.anrimian.musicplayer.ui.library.common.library.BaseLibraryFragment
 import com.github.anrimian.musicplayer.ui.library.common.library.BaseLibraryPresenter
 import com.github.anrimian.musicplayer.ui.playlist_screens.choose.ChoosePlayListDialogFragment
-import com.github.anrimian.musicplayer.ui.playlist_screens.choose.newChoosePlayListDialogFragment
 import com.github.anrimian.musicplayer.ui.playlist_screens.create.CreatePlayListDialogFragment
 import com.github.anrimian.musicplayer.ui.playlist_screens.playlist.PlayListFragment
 import com.github.anrimian.musicplayer.ui.playlist_screens.playlists.adapter.PlayListViewHolder
 import com.github.anrimian.musicplayer.ui.playlist_screens.playlists.adapter.PlayListsAdapter
 import com.github.anrimian.musicplayer.ui.playlist_screens.rename.newRenamePlaylistDialog
 import com.github.anrimian.musicplayer.ui.sleep_timer.SleepTimerDialogFragment
-import com.github.anrimian.musicplayer.ui.utils.fragments.BackButtonListener
+import com.github.anrimian.musicplayer.ui.utils.applyBottomInsets
 import com.github.anrimian.musicplayer.ui.utils.fragments.DialogFragmentRunner
 import com.github.anrimian.musicplayer.ui.utils.fragments.navigation.FragmentNavigation
 import com.github.anrimian.musicplayer.ui.utils.fragments.navigation.FragmentNavigationListener
 import com.github.anrimian.musicplayer.ui.utils.fragments.safeShow
 import com.github.anrimian.musicplayer.ui.utils.getMenuItems
+import com.github.anrimian.musicplayer.ui.utils.isTabletLand
+import com.github.anrimian.musicplayer.ui.utils.safeLaunch
 import com.github.anrimian.musicplayer.ui.utils.views.recycler_view.RecyclerViewUtils
 import com.github.anrimian.musicplayer.ui.utils.views.recycler_view.touch_helper.short_swipe.ShortSwipeCallback
 import moxy.ktx.moxyPresenter
 
 
-class PlayListsFragment : BaseLibraryFragment(), PlayListsView, FragmentNavigationListener,
-    BackButtonListener {
+class PlayListsFragment : BaseLibraryFragment(), PlayListsView, FragmentNavigationListener {
 
     companion object {
         fun newInstance(playlistUri: String? = null) = PlayListsFragment().apply {
@@ -106,6 +108,12 @@ class PlayListsFragment : BaseLibraryFragment(), PlayListsView, FragmentNavigati
         super.onViewCreated(view, savedInstanceState)
         toolbar = requireActivity().findViewById(R.id.toolbar)
 
+        binding.fab.applyFabBottomInsets()
+        binding.progressStateView.applyLibraryProgressViewOffset(requireActivity())
+        if (isTabletLand()) {
+            binding.rvPlayLists.applyBottomInsets()
+        }
+
         layoutManager = LinearLayoutManager(context)
         binding.rvPlayLists.layoutManager = layoutManager
 
@@ -132,6 +140,8 @@ class PlayListsFragment : BaseLibraryFragment(), PlayListsView, FragmentNavigati
         binding.rvPlayLists.adapter = adapter
         binding.fab.setOnClickListener { onCreatePlayListButtonClicked() }
 
+        binding.progressStateView.onTryAgainClick { presenter.onTryAgainButtonClicked() }
+
         choosePlayListDialogRunner = DialogFragmentRunner(
             childFragmentManager,
             Constants.Tags.SELECT_PLAYLIST_TAG
@@ -153,12 +163,16 @@ class PlayListsFragment : BaseLibraryFragment(), PlayListsView, FragmentNavigati
     }
 
     override fun onFragmentResumed() {
-        requireActivity().findViewById<AdvancedToolbar>(R.id.toolbar).setup { config ->
-            config.setTitle(R.string.play_lists)
-            config.setSubtitle(null)
-            config.setupSearch(presenter::onSearchTextChanged, presenter.getSearchText())
-            config.setupOptionsMenu(R.menu.play_lists_toolbar_menu, this::onOptionsItemClicked)
-            config.setupSelectionModeMenu(R.menu.play_lists_selection_menu, this::onActionModeItemClicked)
+        requireActivity().findViewById<AdvancedToolbar>(R.id.toolbar).setup {
+            setTitle(R.string.play_lists)
+            setSubtitle(null)
+            setupSearch(presenter::onSearchTextChanged, text = presenter.getSearchText())
+            setupOptionsMenu(R.menu.play_lists_toolbar_menu, ::onOptionsItemClicked)
+            setupSelectionModeMenu(
+                R.menu.play_lists_selection_menu,
+                ::onActionModeItemClicked,
+                presenter::onExitSelectionModeClicked
+            )
         }
         presenter.onFragmentResumed()
     }
@@ -168,19 +182,9 @@ class PlayListsFragment : BaseLibraryFragment(), PlayListsView, FragmentNavigati
         presenter.onStop(ViewUtils.getListPosition(layoutManager))
     }
 
-    override fun onBackPressed(): Boolean {
-        if (toolbar.isInActionMode()) {
-            presenter.onSelectionModeBackPressed()
-            return true
-        }
-        if (toolbar.isInSearchMode()) {
-            toolbar.setSearchModeEnabled(false)
-            return true
-        }
-        return false
-    }
-
     override fun getCoordinatorLayout() = binding.root
+
+    override fun getFloatingActionButton() = binding.fab
 
     override fun showEmptyList() {
         binding.progressStateView.showMessage(R.string.play_lists_on_device_not_found, false)
@@ -198,6 +202,10 @@ class PlayListsFragment : BaseLibraryFragment(), PlayListsView, FragmentNavigati
         binding.progressStateView.showProgress()
     }
 
+    override fun showErrorState(errorCommand: ErrorCommand) {
+        binding.progressStateView.showMessage(errorCommand.message, true)
+    }
+
     override fun updateList(lists: List<PlayList>) {
         adapter.submitList(lists)
     }
@@ -213,11 +221,17 @@ class PlayListsFragment : BaseLibraryFragment(), PlayListsView, FragmentNavigati
     }
 
     override fun showPlayListsDeleteSuccess(playLists: Collection<PlayList>) {
-        binding.listContainer.showSnackbar(getDeletedPlaylistsMessage(requireContext(), playLists))
+        binding.listContainer.showSnackbar(
+            getDeletedPlaylistsMessage(requireContext(), playLists),
+            anchorView = binding.fab
+        )
     }
 
     override fun showDeletePlayListError(errorCommand: ErrorCommand) {
-        binding.listContainer.showSnackbar(getString(R.string.play_list_delete_error, errorCommand.message))
+        binding.listContainer.showSnackbar(
+            getString(R.string.play_list_delete_error, errorCommand.message),
+            anchorView = binding.fab
+        )
     }
 
     override fun showEditPlayListNameDialog(playList: PlayList) {
@@ -225,11 +239,14 @@ class PlayListsFragment : BaseLibraryFragment(), PlayListsView, FragmentNavigati
     }
 
     override fun launchPickFolderScreen() {
-        pickFolderLauncher.launch(null)
+        pickFolderLauncher.safeLaunch(requireContext(),null)
     }
 
     override fun showPlaylistExportSuccess(playlists: List<PlayList>) {
-        binding.listContainer.showSnackbar(getExportedPlaylistsMessage(requireContext(), playlists))
+        binding.listContainer.showSnackbar(
+            getExportedPlaylistsMessage(requireContext(), playlists),
+            anchorView = binding.fab
+        )
     }
 
     override fun launchPlayListScreen(playlistId: Long) {
@@ -269,7 +286,7 @@ class PlayListsFragment : BaseLibraryFragment(), PlayListsView, FragmentNavigati
             putLongArray(Constants.Arguments.IDS_ARG, playlists.toLongArray(PlayList::getId))
             putBoolean(Constants.Arguments.CLOSE_MULTISELECT_ARG, closeMultiselect)
         }
-        choosePlayListDialogRunner.show(newChoosePlayListDialogFragment(args))
+        choosePlayListDialogRunner.show(ChoosePlayListDialogFragment.newInstance(args))
     }
 
     override fun sendCompositions(compositions: List<Composition>) {
@@ -331,7 +348,7 @@ class PlayListsFragment : BaseLibraryFragment(), PlayListsView, FragmentNavigati
     private fun onOptionsItemClicked(item: MenuItem) {
         when (item.itemId) {
             R.id.menu_search -> toolbar.setSearchModeEnabled(true)
-            R.id.menu_import_playlist -> pickPlaylistFileLauncher.launch(PLAYLIST_MIME_TYPE)
+            R.id.menu_import_playlist -> pickPlaylistFileLauncher.safeLaunch(requireContext(), PLAYLIST_MIME_TYPE)
             R.id.menu_sleep_timer -> SleepTimerDialogFragment().safeShow(childFragmentManager)
             R.id.menu_equalizer -> EqualizerDialogFragment().safeShow(childFragmentManager)
         }

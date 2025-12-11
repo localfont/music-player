@@ -8,7 +8,7 @@
 
     <com.google.android.material.imageview.ShapeableImageView
         style="@style/BaseShapeableImageStyle"
-        android:id="@+id/ivMusicIcon"
+        android:id="@+id/ivCover"
         android:layout_width="50dp"
         android:layout_height="50dp"
         android:contentDescription="@string/folder"
@@ -26,14 +26,12 @@
         android:id="@+id/tvComposition"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:ellipsize="end"
-        android:singleLine="true"
         android:layout_marginStart="@dimen/content_horizontal_margin"
         android:layout_marginEnd="@dimen/content_horizontal_margin"
         app:layout_constrainedWidth="true"
         app:layout_constraintHorizontal_bias="0.0"
-        app:layout_constraintTop_toTopOf="@id/ivMusicIcon"
-        app:layout_constraintStart_toEndOf="@id/ivMusicIcon"
+        app:layout_constraintTop_toTopOf="@id/ivCover"
+        app:layout_constraintStart_toEndOf="@id/ivCover"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintBottom_toTopOf="@id/tvCompositionAuthor"
         tools:text="dsdsdsdsdsdsd"/>
@@ -50,24 +48,20 @@
         app:layout_constrainedWidth="true"
         app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="@id/tvComposition"
-        app:layout_constraintBottom_toBottomOf="@id/ivMusicIcon"
+        app:layout_constraintBottom_toBottomOf="@id/ivCover"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tvComposition"
         tools:text="dsdsdsdsdsdsd"/>
 
     <SeekBar
         android:id="@+id/sbTrackState"
-        style="@style/SeekBarStyle"
+        style="@style/PlaybackSeekBarStyle"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:paddingTop="@dimen/content_spacing_margin"
-        android:paddingBottom="@dimen/content_spacing_margin"
         android:layout_marginTop="@dimen/content_spacing_margin"
-        android:layout_marginLeft="1.5dp"
-        android:layout_marginRight="1.5dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/ivMusicIcon"/>
+        app:layout_constraintTop_toBottomOf="@id/ivCover"/>
 
     <TextView
         android:id="@+id/tvPlayedTime"
@@ -87,6 +81,7 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="@dimen/content_horizontal_margin"
         android:layout_marginEnd="@dimen/content_horizontal_margin"
+        android:layout_marginBottom="2dp"
         app:layout_constraintBottom_toTopOf="@+id/divider_settings"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -126,7 +121,7 @@
 
     <ImageView
         android:id="@+id/ivRewind"
-        style="@style/ButtonStyle.Main"
+        style="@style/ButtonStyle.Playback"
         android:layout_marginEnd="@dimen/content_spacing_margin"
         android:layout_marginStart="@dimen/content_spacing_margin"
         android:contentDescription="@string/rewind"
@@ -137,7 +132,7 @@
 
     <ImageView
         android:id="@+id/ivPlayPause"
-        style="@style/ButtonStyle.Main"
+        style="@style/ButtonStyle.Playback"
         app:layout_constraintTop_toBottomOf="@id/tvPlayedTime"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -146,7 +141,7 @@
 
     <ImageView
         android:id="@+id/ivFastForward"
-        style="@style/ButtonStyle.Main"
+        style="@style/ButtonStyle.Playback"
         android:layout_marginEnd="@dimen/content_spacing_margin"
         android:layout_marginStart="@dimen/content_spacing_margin"
         android:contentDescription="@string/fast_forward"
@@ -181,7 +176,7 @@
         android:layout_marginTop="@dimen/content_internal_margin"
         android:layout_marginEnd="@dimen/content_horizontal_margin"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="@id/ivMusicIcon"
+        app:layout_constraintStart_toStartOf="@id/ivCover"
         app:layout_constraintTop_toBottomOf="@id/divider_settings"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

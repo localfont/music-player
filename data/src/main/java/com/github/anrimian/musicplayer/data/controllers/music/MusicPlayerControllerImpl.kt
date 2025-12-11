@@ -23,6 +23,7 @@ import io.reactivex.rxjava3.subjects.BehaviorSubject
 class MusicPlayerControllerImpl(
     settingsRepository: SettingsRepository,
     context: Context,
+    ioScheduler: Scheduler,
     uiScheduler: Scheduler,
     equalizerController: EqualizerController,
     exoPlayerMediaItemBuilder: ExoPlayerMediaItemBuilder,
@@ -50,7 +51,7 @@ class MusicPlayerControllerImpl(
                 }
                 MediaPlayers.ANDROID_MEDIA_PLAYER -> {
                     mediaPlayerImpls.add {
-                        AndroidMediaPlayer(uiScheduler, equalizerController, sourceBuilder)
+                        AndroidMediaPlayer(context, ioScheduler, equalizerController, sourceBuilder)
                     }
                 }
             }

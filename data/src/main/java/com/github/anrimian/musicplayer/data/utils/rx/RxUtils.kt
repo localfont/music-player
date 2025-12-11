@@ -1,7 +1,8 @@
 package com.github.anrimian.musicplayer.data.utils.rx
 
-import com.github.anrimian.musicplayer.domain.utils.functions.Optional
+import com.github.anrimian.musicplayer.domain.utils.functions.Opt
 import io.reactivex.rxjava3.core.Completable
+import io.reactivex.rxjava3.core.Flowable
 import io.reactivex.rxjava3.core.Maybe
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.core.Single
@@ -24,6 +25,23 @@ fun <T: Any> Observable<T>.retryWithDelay(
     }
 }
 
+fun <T: Any> Flowable<T>.retryWithDelay(
+    maxRetryCount: Int,
+    delay: Long,
+    unit: TimeUnit
+): Flowable<T> {
+    var retryCount = 0
+    return retryWhen { observable ->
+        observable.flatMap { throwable ->
+            if (++retryCount < maxRetryCount) {
+                Flowable.timer(delay, unit)
+            } else {
+                Flowable.error(throwable)
+            }
+        }
+    }
+}
+
 fun <T : Any> Observable<T>.mapError(mapper: (Throwable) -> Throwable): Observable<T> {
     return onErrorResumeNext { t -> Observable.error(mapper(t)) }
 }
@@ -40,6 +58,6 @@ fun Completable.mapError(mapper: (Throwable) -> Throwable): Completable {
     return onErrorResumeNext { t -> Completable.error(mapper(t)) }
 }
 
-fun <T> Observable<List<T>>.takeFirstListItem(): Observable<Optional<T>> {
-    return map { list -> Optional(list.firstOrNull()) }
+fun <T> Observable<List<T>>.takeFirstListItem(): Observable<Opt<T>> {
+    return map { list -> Opt(list.firstOrNull()) }
 }

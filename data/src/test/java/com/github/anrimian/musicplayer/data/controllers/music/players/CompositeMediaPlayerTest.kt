@@ -1,6 +1,7 @@
 package com.github.anrimian.musicplayer.data.controllers.music.players
 
 import com.github.anrimian.musicplayer.domain.models.composition.content.CompositionContentSource
+import com.github.anrimian.musicplayer.domain.models.composition.content.RelaunchSourceException
 import com.github.anrimian.musicplayer.domain.models.composition.content.UnsupportedSourceException
 import com.github.anrimian.musicplayer.domain.models.player.SoundBalance
 import com.github.anrimian.musicplayer.domain.models.player.events.MediaPlayerEvent
@@ -11,7 +12,13 @@ import io.reactivex.rxjava3.subjects.PublishSubject
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.anyFloat
-import org.mockito.kotlin.*
+import org.mockito.kotlin.any
+import org.mockito.kotlin.anyOrNull
+import org.mockito.kotlin.eq
+import org.mockito.kotlin.inOrder
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.never
+import org.mockito.kotlin.whenever
 
 class CompositeMediaPlayerTest {
 
@@ -51,7 +58,7 @@ class CompositeMediaPlayerTest {
     }
 
     @Test
-    fun testPlayersSwitchOnPrepare() {
+    fun `test players switch on prepare`() {
         val source: CompositionContentSource = mock()
         
         whenever(player1.prepareToPlay(any(), anyOrNull()))
@@ -63,7 +70,7 @@ class CompositeMediaPlayerTest {
     }
 
     @Test
-    fun testAllPlayersNotWorkingOnPrepare() {
+    fun `test all players not working on prepare`() {
         val source: CompositionContentSource = mock()
 
         whenever(player1.prepareToPlay(any(), anyOrNull()))
@@ -81,21 +88,41 @@ class CompositeMediaPlayerTest {
     }
 
     @Test
-    fun testPlayersSwitchOnEvent() {
+    fun `test players switch on event`() {
+        val source: CompositionContentSource = mock()
+        compositeMediaPlayer.prepareToPlay(source).subscribe()
         val exception = UnsupportedSourceException()
         player1ErrorEventSubject.onNext(MediaPlayerEvent.Error(exception))
+        textEventObserver.assertValue { event ->
+            event is MediaPlayerEvent.Error && event.throwable is RelaunchSourceException
+        }
+
+        compositeMediaPlayer.prepareToPlay(source).subscribe()
+
         inOrder.verify(player1).release()
         inOrder.verify(player2).setPlaybackSpeed(anyFloat())
     }
 
     @Test
-    fun testPlayersSwitchToTheEndOnEvent() {
+    fun `test players switch on event to the end of available players`() {
+        val source: CompositionContentSource = mock()
         val exception = UnsupportedSourceException()
 
+        compositeMediaPlayer.prepareToPlay(source).subscribe()
         player1ErrorEventSubject.onNext(MediaPlayerEvent.Error(exception))
+        textEventObserver.assertValue { event ->
+            event is MediaPlayerEvent.Error && event.throwable is RelaunchSourceException
+        }
+
+        compositeMediaPlayer.prepareToPlay(source).subscribe()
         inOrder.verify(player1).release()
         inOrder.verify(player2).setPlaybackSpeed(anyFloat())
+
         player2ErrorEventSubject.onNext(MediaPlayerEvent.Error(exception))
+        textEventObserver.assertValueAt(1) { event ->
+            event is MediaPlayerEvent.Error && event.throwable is UnsupportedSourceException
+        }
+        compositeMediaPlayer.prepareToPlay(source).subscribe()
         inOrder.verify(player1, never()).release()
         inOrder.verify(player2, never()).setPlaybackSpeed(anyFloat())
     }
@@ -124,6 +151,10 @@ class CompositeMediaPlayerTest {
 
         compositeMediaPlayer.prepareToPlay(source).subscribe()
         player1ErrorEventSubject.onNext(MediaPlayerEvent.Error(exception))
+        textEventObserver.assertValue { event ->
+            event is MediaPlayerEvent.Error && event.throwable is RelaunchSourceException
+        }
+
         compositeMediaPlayer.prepareToPlay(source2).subscribe()
 
         inOrder.verify(player1).prepareToPlay(eq(source), anyOrNull())

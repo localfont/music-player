@@ -1,6 +1,6 @@
 package com.github.anrimian.musicplayer.ui.library.compositions
 
-import com.github.anrimian.filesync.SyncInteractor
+import com.github.anrimian.fsync.SyncInteractor
 import com.github.anrimian.musicplayer.domain.interactors.library.LibraryCompositionsInteractor
 import com.github.anrimian.musicplayer.domain.interactors.player.LibraryPlayerInteractor
 import com.github.anrimian.musicplayer.domain.interactors.playlists.PlayListsInteractor

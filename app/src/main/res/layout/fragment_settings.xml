@@ -6,7 +6,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <androidx.core.widget.NestedScrollView
-        android:id="@+id/fl_container"
+        android:id="@+id/nsvContainer"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="?android:attr/colorBackground">
@@ -25,7 +25,7 @@
 
             <View
                 style="@style/Divider.Horizontal"
-                android:layout_marginStart="@dimen/toolbar_content_start"/>
+                android:layout_marginStart="@dimen/content_horizontal_margin"/>
 
             <TextView
                 android:id="@+id/tv_library"
@@ -36,7 +36,7 @@
 
             <View
                 style="@style/Divider.Horizontal"
-                android:layout_marginStart="@dimen/toolbar_content_start"/>
+                android:layout_marginStart="@dimen/content_horizontal_margin"/>
 
             <TextView
                 android:id="@+id/tv_player"
@@ -47,7 +47,7 @@
 
             <View
                 style="@style/Divider.Horizontal"
-                android:layout_marginStart="@dimen/toolbar_content_start"/>
+                android:layout_marginStart="@dimen/content_horizontal_margin"/>
 
             <TextView
                 android:id="@+id/tv_headset"
@@ -58,7 +58,7 @@
 
             <View
                 style="@style/Divider.Horizontal"
-                android:layout_marginStart="@dimen/toolbar_content_start"/>
+                android:layout_marginStart="@dimen/content_horizontal_margin"/>
 
             <TextView
                 android:id="@+id/tv_theme"
@@ -69,7 +69,7 @@
 
             <View
                 style="@style/Divider.Horizontal"
-                android:layout_marginStart="@dimen/toolbar_content_start"/>
+                android:layout_marginStart="@dimen/content_horizontal_margin"/>
 
             <LinearLayout
                 android:id="@+id/llRunRescanStorage"

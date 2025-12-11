@@ -9,7 +9,7 @@
 
     <com.google.android.material.imageview.ShapeableImageView
         style="@style/BaseShapeableImageStyle"
-        android:id="@+id/ivMusicIcon"
+        android:id="@+id/ivCover"
         android:layout_width="56dp"
         android:layout_height="56dp"
         android:scaleType="centerCrop"
@@ -36,7 +36,7 @@
         android:gravity="center"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/ivMusicIcon"
+        app:layout_constraintTop_toBottomOf="@+id/ivCover"
         tools:text="album"/>
 
     <TextView

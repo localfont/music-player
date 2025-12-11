@@ -1,6 +1,6 @@
 package com.github.anrimian.musicplayer.ui.library.genres.items
 
-import com.github.anrimian.filesync.SyncInteractor
+import com.github.anrimian.fsync.SyncInteractor
 import com.github.anrimian.musicplayer.domain.interactors.library.LibraryGenresInteractor
 import com.github.anrimian.musicplayer.domain.interactors.player.LibraryPlayerInteractor
 import com.github.anrimian.musicplayer.domain.interactors.playlists.PlayListsInteractor
@@ -44,10 +44,12 @@ class GenreItemsPresenter(
     }
 
     override fun getSavedListPosition(): ListPosition? {
-        return null
+        return interactor.getSavedItemsListPosition(genreId)
     }
 
-    override fun saveListPosition(listPosition: ListPosition) {}
+    override fun saveListPosition(listPosition: ListPosition) {
+        interactor.saveItemsListPosition(genreId, listPosition)
+    }
 
     fun onFragmentResumed() {
         interactor.setSelectedGenreScreen(genreId)

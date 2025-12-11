@@ -109,7 +109,7 @@ class AlbumsListPresenter(
         shareAlbumsCompositions(ArrayList(selectedAlbums))
     }
 
-    fun onSelectionModeBackPressed() {
+    fun onExitSelectionModeClicked() {
         closeSelectionMode()
     }
 

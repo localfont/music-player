@@ -1,7 +1,10 @@
 package com.github.anrimian.musicplayer.ui.player_screen
 
-import com.github.anrimian.filesync.models.state.file.FileSyncState
+import com.github.anrimian.fsync.SyncInteractor
+import com.github.anrimian.fsync.models.Optional
+import com.github.anrimian.fsync.models.state.file.FileSyncState
 import com.github.anrimian.musicplayer.data.storage.exceptions.UnavailableMediaStoreException
+import com.github.anrimian.musicplayer.domain.interactors.player.ActionState
 import com.github.anrimian.musicplayer.domain.interactors.player.LibraryPlayerInteractor
 import com.github.anrimian.musicplayer.domain.interactors.player.PlayerScreenInteractor
 import com.github.anrimian.musicplayer.domain.interactors.playlists.PlayListsInteractor
@@ -10,7 +13,9 @@ import com.github.anrimian.musicplayer.domain.models.play_queue.PlayQueueEvent
 import com.github.anrimian.musicplayer.domain.models.play_queue.PlayQueueItem
 import com.github.anrimian.musicplayer.domain.models.player.PlayerState
 import com.github.anrimian.musicplayer.domain.models.playlist.PlayList
+import com.github.anrimian.musicplayer.domain.models.sync.FileKey
 import com.github.anrimian.musicplayer.domain.models.utils.CompositionHelper
+import com.github.anrimian.musicplayer.domain.models.volume.VolumeState
 import com.github.anrimian.musicplayer.ui.common.error.parser.ErrorParser
 import com.github.anrimian.musicplayer.ui.library.common.library.BaseLibraryPresenter
 import io.reactivex.rxjava3.core.Completable
@@ -23,9 +28,10 @@ import java.util.LinkedList
 class PlayerPresenter(
     private val playerInteractor: LibraryPlayerInteractor,
     private val playerScreenInteractor: PlayerScreenInteractor,
+    private val syncInteractor: SyncInteractor<FileKey, *, Long>,
     playListsInteractor: PlayListsInteractor,
     errorParser: ErrorParser,
-    uiScheduler: Scheduler
+    uiScheduler: Scheduler,
 ) : BaseLibraryPresenter<PlayerView>(
     playerInteractor,
     playListsInteractor,
@@ -44,6 +50,7 @@ class PlayerPresenter(
     override fun onFirstViewAttach() {
         super.onFirstViewAttach()
         viewState.setButtonPanelState(playerScreenInteractor.isPlayerPanelOpen)
+        viewState.showActionState(ActionState.NO_STATE)
         subscribeOnUiSettings()
         subscribeOnRandomMode()
         subscribeOnSpeedAvailableState()
@@ -58,7 +65,12 @@ class PlayerPresenter(
         subscribeOnFileScannerState()
         playerScreenInteractor.playerScreensSwipeObservable
             .unsafeSubscribeOnUi(viewState::showScreensSwipeEnabled)
-        playerScreenInteractor.volumeObservable.unsafeSubscribeOnUi(viewState::onVolumeChanged)
+        playerScreenInteractor.volumeObservable
+            .map(VolumeState::toLong)
+            .unsafeSubscribeOnUi(viewState::onVolumeChanged)
+        playerScreenInteractor.actionStateObservable.unsafeSubscribeOnUi(viewState::showActionState)
+
+        syncInteractor.onAppStarted()
     }
 
     fun onSetupScreenStateRequested() {
@@ -125,28 +137,22 @@ class PlayerPresenter(
         playerInteractor.setRepeatMode(mode)
     }
 
-    fun onRandomPlayingButtonClicked(enable: Boolean) {
-        playerInteractor.setRandomPlayingEnabled(enable)
-    }
-
-    fun onShareCompositionButtonClicked() {
-        currentItem?.let { item -> viewState.showShareCompositionDialog(item.composition) }
+    fun onChangeRandomModeClicked() {
+        playerInteractor.changeRandomMode()
     }
 
     fun onTrackRewoundTo(progress: Int) {
         playerInteractor.seekTo(progress.toLong())
     }
 
-    fun onDeleteCurrentCompositionButtonClicked() {
-        currentItem?.let { item -> viewState.showConfirmDeleteDialog(listOf(item.composition)) }
+    fun onDeleteCompositionButtonClicked(composition: Composition) {
+        viewState.showConfirmDeleteDialog(listOf(composition))
     }
 
-    fun onAddCurrentCompositionToPlayListButtonClicked() {
-        currentItem?.let { item ->
-            compositionsForPlayList.clear()
-            compositionsForPlayList.add(item.composition)
-            viewState.showSelectPlayListDialog()
-        }
+    fun onAddQueueItemToPlayListButtonClicked(composition: Composition) {
+        compositionsForPlayList.clear()
+        compositionsForPlayList.add(composition)
+        viewState.showSelectPlayListDialog()
     }
 
     fun onPlayListForAddingSelected(playList: PlayList) {
@@ -165,16 +171,8 @@ class PlayerPresenter(
         playerInteractor.onSeekFinished(progress.toLong())
     }
 
-    fun onEditCompositionButtonClicked() {
-        currentItem?.let { item -> viewState.startEditCompositionScreen(item.composition.id) }
-    }
-
-    fun onShowCurrentCompositionInFoldersClicked() {
-        currentItem?.let { item -> viewState.locateCompositionInFolders(item.composition) }
-    }
-
     fun onRestoreDeletedItemClicked() {
-        playerInteractor.restoreDeletedItem().justSubscribe(this::onDefaultError)
+        playerInteractor.restoreDeletedItem().justRunOnUi(viewState::showErrorMessage)
     }
 
     fun onFastSeekForwardCalled() {
@@ -194,9 +192,13 @@ class PlayerPresenter(
     }
 
     fun onPlaybackSpeedSelected(speed: Float) {
-        viewState.displayPlaybackSpeed(speed)
+        viewState.showPlaybackSpeed(speed)
         playerInteractor.setPlaybackSpeed(speed)
     }
+
+    fun getPlayerContentPage() = playerScreenInteractor.playerContentPage
+
+    fun isPlayerPanelOpened() = playerScreenInteractor.isPlayerPanelOpen
 
     private fun subscribeOnRepeatMode() {
         playerInteractor.getRepeatModeObservable().unsafeSubscribeOnUi(viewState::showRepeatMode)
@@ -224,8 +226,8 @@ class PlayerPresenter(
             .unsafeSubscribeOnUi(this::onCurrentCompositionSyncStateReceived)
     }
 
-    private fun onCurrentCompositionSyncStateReceived(fileSyncState: FileSyncState) {
-        viewState.showCurrentCompositionSyncState(fileSyncState, currentItem)
+    private fun onCurrentCompositionSyncStateReceived(fileSyncStateOpt: Optional<FileSyncState>) {
+        viewState.showCurrentCompositionSyncState(fileSyncStateOpt.value, currentItem)
     }
 
     private fun subscribeOnCurrentComposition() {
@@ -239,18 +241,16 @@ class PlayerPresenter(
 
         if (currentItem == null
             || currentItem != newItem
-            || !CompositionHelper.areSourcesTheSame(newItem.composition, currentItem.composition)) {
+            || !CompositionHelper.areSourcesTheSame(newItem, currentItem)) {
 
             var updateCover = false
             if ((currentItem == null) != (newItem == null)) {
                 updateCover = true
             } else if (currentItem != null && newItem != null)  {
-                val newComposition = newItem.composition
-                val currentComposition = currentItem.composition
-                updateCover = currentComposition.dateModified != newComposition.dateModified
-                        || currentComposition.coverModifyTime != newComposition.coverModifyTime
-                        || currentComposition.size != newComposition.size
-                        || currentComposition.isFileExists != newComposition.isFileExists
+                updateCover = currentItem.dateModified != newItem.dateModified
+                        || currentItem.coverModifyTime != newItem.coverModifyTime
+                        || currentItem.size != newItem.size
+                        || currentItem.isFileExists != newItem.isFileExists
             }
 
             this.currentItem = newItem
@@ -264,7 +264,7 @@ class PlayerPresenter(
 
     private fun subscribeOnPlayerStateChanges() {
         playerInteractor.getIsPlayingStateObservable()
-            .unsafeSubscribeOnUi(viewState::showPlayerState)
+            .unsafeSubscribeOnUi(viewState::showPlayingState)
     }
 
     private fun subscribeOnErrorEvents() {
@@ -293,10 +293,7 @@ class PlayerPresenter(
     }
 
     private fun onTrackPositionChanged(currentPosition: Long) {
-        currentItem?.let { item ->
-            val duration = item.composition.duration
-            viewState.showTrackState(currentPosition, duration)
-        }
+        currentItem?.let { item -> viewState.showTrackState(currentPosition, item.duration) }
     }
 
     private fun subscribeOnUiSettings() {
@@ -314,14 +311,9 @@ class PlayerPresenter(
         viewState.showCurrentItemCover(currentItem)
     }
 
-    private fun onDefaultError(throwable: Throwable) {
-        val errorCommand = errorParser.parseError(throwable)
-        viewState.showErrorMessage(errorCommand)
-    }
-
     private fun subscribeOnRandomMode() {
         playerInteractor.getRandomPlayingObservable()
-            .unsafeSubscribeOnUi(viewState::showRandomPlayingButton)
+            .unsafeSubscribeOnUi(viewState::showRandomMode)
     }
 
     private fun subscribeOnSpeedAvailableState() {
@@ -331,7 +323,7 @@ class PlayerPresenter(
 
     private fun subscribeOnSpeedState() {
         playerInteractor.getPlaybackSpeedObservable()
-            .unsafeSubscribeOnUi(viewState::displayPlaybackSpeed)
+            .unsafeSubscribeOnUi(viewState::showPlaybackSpeed)
     }
 
     private fun subscribeOnSleepTimerTime() {
@@ -343,4 +335,5 @@ class PlayerPresenter(
         playerScreenInteractor.fileScannerStateObservable
             .unsafeSubscribeOnUi(viewState::showFileScannerState)
     }
+
 }

@@ -5,18 +5,19 @@ import android.content.Intent
 import android.os.Binder
 import android.os.Build
 import android.support.v4.media.session.MediaSessionCompat
+import androidx.core.app.ServiceCompat
 import com.github.anrimian.musicplayer.Constants
 import com.github.anrimian.musicplayer.R
 import com.github.anrimian.musicplayer.data.utils.Permissions
 import com.github.anrimian.musicplayer.di.Components
 import com.github.anrimian.musicplayer.domain.interactors.player.MusicServiceInteractor
 import com.github.anrimian.musicplayer.domain.interactors.player.PlayerInteractor
+import com.github.anrimian.musicplayer.domain.interactors.player.PlayerType
 import com.github.anrimian.musicplayer.domain.models.composition.source.CompositionSource
 import com.github.anrimian.musicplayer.domain.models.player.PlayerState
 import com.github.anrimian.musicplayer.domain.models.player.modes.RepeatMode
 import com.github.anrimian.musicplayer.domain.models.player.service.MusicNotificationSetting
-import com.github.anrimian.musicplayer.domain.utils.Objects
-import com.github.anrimian.musicplayer.domain.utils.functions.Optional
+import com.github.anrimian.musicplayer.domain.utils.functions.Opt
 import com.github.anrimian.musicplayer.ui.common.format.getRemoteViewPlayerState
 import com.github.anrimian.musicplayer.ui.common.theme.AppTheme
 import com.github.anrimian.musicplayer.ui.notifications.MediaNotificationsDisplayer
@@ -39,17 +40,19 @@ class MusicService : Service() {
     private var isPlayingState = 0
     private var currentSource: CompositionSource? = null
     private var repeatMode = RepeatMode.NONE
+    private var randomMode = false
     private var notificationSetting: MusicNotificationSetting? = null
     private var currentAppTheme: AppTheme? = null
 
     override fun onCreate() {
         super.onCreate()
+        Components.checkInitialization(applicationContext)
         Components.getAppComponent().mediaSessionHandler().dispatchServiceCreated()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent == null) {
-            stopForeground(true)
+            stopForegroundCompat(true)
             stopSelf()
             return START_NOT_STICKY
         }
@@ -58,7 +61,7 @@ class MusicService : Service() {
                 this,
                 R.string.no_file_permission
             )
-            stopForeground(true)
+            stopForegroundCompat(true)
             stopSelf()
             return START_NOT_STICKY
         }
@@ -98,6 +101,7 @@ class MusicService : Service() {
             currentSource,
             mediaSession(),
             repeatMode,
+            randomMode,
             notificationSetting,
             reloadCover
         )
@@ -108,12 +112,21 @@ class MusicService : Service() {
         when (requestCode) {
             Constants.Actions.PLAY -> {
                 val playDelay = intent.getLongExtra(PLAY_DELAY_MILLIS, 0)
-                playerInteractor().play(playDelay)
+                var playerType: PlayerType? = null
+                val playerTypeInt = intent.getIntExtra(PLAYER_TYPE, 0)
+                if (playerTypeInt != 0) {
+                    playerType = PlayerType.LIBRARY
+                }
+                musicServiceInteractor().play(playDelay, playerType)
             }
             Constants.Actions.PAUSE -> playerInteractor().pause()
             Constants.Actions.SKIP_TO_NEXT -> musicServiceInteractor().skipToNext()
             Constants.Actions.SKIP_TO_PREVIOUS -> musicServiceInteractor().skipToPrevious()
+            Constants.Actions.CHANGE_SHUFFLE_NODE -> musicServiceInteractor().changeRandomMode()
             Constants.Actions.CHANGE_REPEAT_MODE -> musicServiceInteractor().changeRepeatMode()
+            Constants.Actions.REWIND -> musicServiceInteractor().fastSeekBackward()
+            Constants.Actions.FAST_FORWARD -> musicServiceInteractor().fastSeekForward()
+            Constants.Actions.CLOSE -> musicServiceInteractor().reset()
         }
     }
 
@@ -127,6 +140,7 @@ class MusicService : Service() {
                 playerInteractor().getPlayerStateObservable(),
                 playerInteractor().getCurrentSourceObservable(),
                 musicServiceInteractor().repeatModeObservable,
+                musicServiceInteractor().randomModeObservable,
                 musicServiceInteractor().notificationSettingObservable,
                 Components.getAppComponent().themeController().getAppThemeObservable(),
                 serviceState::set
@@ -136,7 +150,8 @@ class MusicService : Service() {
         serviceDisposable.add(Components.getAppComponent().systemServiceController()
             .getStopForegroundSignal()
             .observeOn(AndroidSchedulers.mainThread())
-            .subscribe { stopForeground(false) })
+            .subscribe(::stopForegroundCompat)
+        )
     }
 
     private fun onServiceStateReceived(serviceState: ServiceState) {
@@ -144,19 +159,20 @@ class MusicService : Service() {
         val newPlayerState = serviceState.playerState
         var updateNotification = false
         var updateCover = false
-        var stopService = false
+        var ignoreUpdate = false
         if (playerState !== serviceState.playerState) {
             playerState = serviceState.playerState
         }
-        val isPlayingState =
-            getRemoteViewPlayerState(serviceState.isPlaying, serviceState.playerState!!)
+        val isPlayingState = getRemoteViewPlayerState(
+            serviceState.isPlaying,
+            serviceState.playerState!!
+        )
         if (this.isPlayingState != isPlayingState) {
             this.isPlayingState = isPlayingState
             updateNotification = true
         }
-        val isSourceEqual = Objects.equals(newCompositionSource, currentSource)
-        val isContentEqual =
-            CompositionSourceModelHelper.areSourcesTheSame(currentSource, newCompositionSource)
+        val isSourceEqual = newCompositionSource == currentSource
+        val isContentEqual = CompositionSourceModelHelper.areSourcesTheSame(currentSource, newCompositionSource)
         if (!isSourceEqual || !isContentEqual) {
             currentSource = newCompositionSource
             updateNotification = true
@@ -166,8 +182,12 @@ class MusicService : Service() {
             repeatMode = serviceState.repeatMode
             updateNotification = true
         }
-        if (newCompositionSource == null || newPlayerState === PlayerState.IDLE) {
-            stopService = true
+        if (randomMode != serviceState.randomMode) {
+            randomMode = serviceState.randomMode
+            updateNotification = true
+        }
+        if (newPlayerState == PlayerState.IDLE) {
+            ignoreUpdate = true
         }
         val newSettings = serviceState.settings
         if (newSettings != notificationSetting) {
@@ -182,17 +202,13 @@ class MusicService : Service() {
             updateNotification = true
         }
 
-        //seekbar values on cover settings change
-        if (updateNotification && !stopService) {
-            updateForegroundNotification(updateCover)
-        }
-        if (stopService) {
-            mediaNotificationsDisplayer().cancelCoverLoadingForForegroundNotification()
-            stopForeground(true)
-            stopSelf()
-        } else {
+        if (!ignoreUpdate) {
             if (!mediaSession().isActive) {
                 mediaSession().isActive = true
+            }
+            if (updateNotification) {
+                //seekbar values on cover settings change
+                updateForegroundNotification(updateCover)
             }
         }
     }
@@ -203,9 +219,23 @@ class MusicService : Service() {
             currentSource,
             mediaSession(),
             repeatMode,
+            randomMode,
             notificationSetting,
             reloadCover
         )
+    }
+
+    private fun stopForegroundCompat(removeNotification: Boolean) {
+        val flags = if (removeNotification) {
+            mediaNotificationsDisplayer().cancelCoverLoadingForForegroundNotification()
+            ServiceCompat.STOP_FOREGROUND_REMOVE
+        } else {
+            0
+        }
+        ServiceCompat.stopForeground(this, flags)
+        if (removeNotification) {
+            stopSelf()
+        }
     }
 
     private fun mediaSession(): MediaSessionCompat {
@@ -231,23 +261,26 @@ class MusicService : Service() {
     private class ServiceState {
         var isPlaying = false
         var playerState: PlayerState? = null
-        var compositionSource: Optional<CompositionSource>? = null
+        var compositionSource: Opt<CompositionSource>? = null
         var repeatMode = 0
+        var randomMode = false
         var settings: MusicNotificationSetting? = null
         var appTheme: AppTheme? = null
 
         fun set(
             isPlaying: Boolean,
             playerState: PlayerState,
-            compositionSource: Optional<CompositionSource>,
+            compositionSource: Opt<CompositionSource>,
             repeatMode: Int,
+            randomMode: Boolean,
             settings: MusicNotificationSetting,
-            appTheme: AppTheme
+            appTheme: AppTheme,
         ): ServiceState {
             this.isPlaying = isPlaying
             this.playerState = playerState
             this.compositionSource = compositionSource
             this.repeatMode = repeatMode
+            this.randomMode = randomMode
             this.settings = settings
             this.appTheme = appTheme
             return this
@@ -261,6 +294,7 @@ class MusicService : Service() {
     companion object {
         const val REQUEST_CODE = "request_code"
         const val START_FOREGROUND_SIGNAL = "start_foreground_signal"
+        const val PLAYER_TYPE = "player_type"
         const val PLAY_DELAY_MILLIS = "play_delay"
     }
 }

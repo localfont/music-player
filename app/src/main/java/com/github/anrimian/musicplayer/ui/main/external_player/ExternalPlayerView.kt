@@ -1,10 +1,10 @@
 package com.github.anrimian.musicplayer.ui.main.external_player
 
 import com.github.anrimian.musicplayer.data.models.composition.source.ExternalCompositionSource
-import com.github.anrimian.musicplayer.domain.models.volume.VolumeState
 import com.github.anrimian.musicplayer.ui.common.error.ErrorCommand
 import moxy.MvpView
 import moxy.viewstate.strategy.alias.AddToEndSingle
+import moxy.viewstate.strategy.alias.OneExecution
 
 interface ExternalPlayerView : MvpView {
 
@@ -12,7 +12,7 @@ interface ExternalPlayerView : MvpView {
     fun showPlayerState(isPlaying: Boolean)
 
     @AddToEndSingle
-    fun displayComposition(source: ExternalCompositionSource)
+    fun displayComposition(source: ExternalCompositionSource?)
 
     @AddToEndSingle
     fun showTrackState(currentPosition: Long, duration: Long)
@@ -30,9 +30,12 @@ interface ExternalPlayerView : MvpView {
     fun displayPlaybackSpeed(speed: Float)
 
     @AddToEndSingle
-    fun showSpeedChangeFeatureVisible(visible: Boolean)
+    fun showSpeedVisible(visible: Boolean)
 
     @AddToEndSingle
-    fun onVolumeChanged(volume: VolumeState)
+    fun showVolumeState(volume: Long)
+
+    @OneExecution
+    fun closeScreen()
 
 }

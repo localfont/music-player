@@ -11,7 +11,6 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.StringRes;
-import androidx.core.view.ViewCompat;
 
 import com.github.anrimian.musicplayer.R;
 import com.github.anrimian.musicplayer.ui.utils.views.progress_bar.ProgressBarCountDownTimer;
@@ -37,8 +36,9 @@ public class AppSnackbar extends BaseTransientBottomBar<AppSnackbar>  {
         LayoutInflater inflater = LayoutInflater.from(parent.getContext());
         View view = inflater.inflate(R.layout.snackbar_view, parent, false);
 
-        ContentViewCallback callback = new ContentViewCallback(view);
+        ContentViewCallback callback = new ContentViewCallback();
         AppSnackbar appSnackbar = new AppSnackbar(parent, view, callback, text);
+        appSnackbar.setAnimationMode(BaseTransientBottomBar.ANIMATION_MODE_FADE);
         View snackbarView = appSnackbar.getView();
         int padding = parent.getResources().getDimensionPixelSize(R.dimen.snackbar_margin);
         snackbarView.setPadding(padding, padding, padding, padding);
@@ -130,29 +130,11 @@ public class AppSnackbar extends BaseTransientBottomBar<AppSnackbar>  {
 
     private static class ContentViewCallback implements com.google.android.material.snackbar.ContentViewCallback {
 
-        private final View content;
-
-        ContentViewCallback(View content) {
-            this.content = content;
-        }
+        @Override
+        public void animateContentIn(int delay, int duration) {}
 
         @Override
-        public void animateContentIn(int delay, int duration) {
-            content.setTranslationY(content.getHeight());
-            ViewCompat.animate(content)
-                    .translationY(0f)
-                    .setDuration(duration)
-                    .setStartDelay(delay);
-        }
-
-        @Override
-        public void animateContentOut(int delay, int duration) {
-            content.setTranslationY(0f);
-            ViewCompat.animate(content)
-                    .translationY(content.getHeight())
-                    .setDuration(duration)
-                    .setStartDelay(delay);
-        }
+        public void animateContentOut(int delay, int duration) {}
     }
 
 }

@@ -2,7 +2,6 @@
 <resources>
 
     <string name="open_drawer">Άνοιγμα λίστας</string>
-    <string name="close_drawer">Κλείσιμο λίστας</string>
     <string name="try_again">Προσπαθήστε ξανά</string>
     <string name="can_not_work_without_file_permission">Η εφαρμογή δεν μπορεί να λειτουργήσει χωρίς να έχει πρόσβαση στα αρχεία</string>
     <string name="close">Κλείσιμο</string>

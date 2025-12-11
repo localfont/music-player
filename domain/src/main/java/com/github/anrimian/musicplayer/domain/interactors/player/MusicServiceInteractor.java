@@ -1,8 +1,5 @@
 package com.github.anrimian.musicplayer.domain.interactors.player;
 
-import static com.github.anrimian.musicplayer.domain.interactors.player.PlayerType.EXTERNAL;
-import static com.github.anrimian.musicplayer.domain.interactors.player.PlayerType.LIBRARY;
-
 import com.github.anrimian.musicplayer.domain.interactors.library.LibraryAlbumsInteractor;
 import com.github.anrimian.musicplayer.domain.interactors.library.LibraryArtistsInteractor;
 import com.github.anrimian.musicplayer.domain.interactors.library.LibraryCompositionsInteractor;
@@ -19,7 +16,6 @@ import com.github.anrimian.musicplayer.domain.models.player.service.MusicNotific
 import com.github.anrimian.musicplayer.domain.models.playlist.PlayList;
 import com.github.anrimian.musicplayer.domain.models.playlist.PlayListItem;
 import com.github.anrimian.musicplayer.domain.repositories.SettingsRepository;
-import com.github.anrimian.musicplayer.domain.utils.ListUtils;
 
 import java.util.List;
 
@@ -27,12 +23,12 @@ import javax.annotation.Nullable;
 
 import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Observable;
+import io.reactivex.rxjava3.core.Single;
 
 public class MusicServiceInteractor {
 
-    private final PlayerCoordinatorInteractor playerCoordinatorInteractor;
+    private final CommonPlayerInteractor commonPlayerInteractor;
     private final LibraryPlayerInteractor libraryPlayerInteractor;
-    private final ExternalPlayerInteractor externalPlayerInteractor;
     private final LibraryCompositionsInteractor libraryCompositionsInteractor;
     private final LibraryFoldersInteractor libraryFoldersInteractor;
     private final LibraryArtistsInteractor libraryArtistsInteractor;
@@ -41,9 +37,8 @@ public class MusicServiceInteractor {
     private final PlayListsInteractor playListsInteractor;
     private final SettingsRepository settingsRepository;
 
-    public MusicServiceInteractor(PlayerCoordinatorInteractor playerCoordinatorInteractor,
+    public MusicServiceInteractor(CommonPlayerInteractor commonPlayerInteractor,
                                   LibraryPlayerInteractor libraryPlayerInteractor,
-                                  ExternalPlayerInteractor externalPlayerInteractor,
                                   LibraryCompositionsInteractor libraryCompositionsInteractor,
                                   LibraryFoldersInteractor libraryFoldersInteractor,
                                   LibraryArtistsInteractor libraryArtistsInteractor,
@@ -51,9 +46,8 @@ public class MusicServiceInteractor {
                                   LibraryGenresInteractor libraryGenresInteractor,
                                   PlayListsInteractor playListsInteractor,
                                   SettingsRepository settingsRepository) {
-        this.playerCoordinatorInteractor = playerCoordinatorInteractor;
+        this.commonPlayerInteractor = commonPlayerInteractor;
         this.libraryPlayerInteractor = libraryPlayerInteractor;
-        this.externalPlayerInteractor = externalPlayerInteractor;
         this.libraryCompositionsInteractor = libraryCompositionsInteractor;
         this.libraryFoldersInteractor = libraryFoldersInteractor;
         this.libraryArtistsInteractor = libraryArtistsInteractor;
@@ -63,66 +57,60 @@ public class MusicServiceInteractor {
         this.settingsRepository = settingsRepository;
     }
 
+    public void prepare() {
+        commonPlayerInteractor.prepare();
+    }
+
+    public void play(long delay, @Nullable PlayerType forcePlayerType) {
+        commonPlayerInteractor.play(delay, forcePlayerType);
+    }
+
     public void skipToNext() {
-        if (playerCoordinatorInteractor.isPlayerTypeActive(LIBRARY)) {
-            libraryPlayerInteractor.skipToNext();
-        }
+        commonPlayerInteractor.skipToNext();
     }
 
     public void skipToPrevious() {
-        if (playerCoordinatorInteractor.isPlayerTypeActive(LIBRARY)) {
-            libraryPlayerInteractor.skipToPrevious();
-        }
+        commonPlayerInteractor.skipToPrevious();
     }
 
     public void setRepeatMode(int appRepeatMode) {
-        if (playerCoordinatorInteractor.isPlayerTypeActive(LIBRARY)) {
-            libraryPlayerInteractor.setRepeatMode(appRepeatMode);
-        } else {
-            externalPlayerInteractor.setExternalPlayerRepeatMode(appRepeatMode);
-        }
+        commonPlayerInteractor.setRepeatMode(appRepeatMode);
+    }
+
+    public void changeRandomMode() {
+        commonPlayerInteractor.changeRandomMode();
     }
 
     public void changeRepeatMode() {
-        if (playerCoordinatorInteractor.isPlayerTypeActive(LIBRARY)) {
-            libraryPlayerInteractor.changeRepeatMode();
-        } else {
-            externalPlayerInteractor.changeExternalPlayerRepeatMode();
-        }
+        commonPlayerInteractor.changeRepeatMode();
     }
 
     public void setRandomPlayingEnabled(boolean isEnabled) {
-        libraryPlayerInteractor.setRandomPlayingEnabled(isEnabled);
+        commonPlayerInteractor.setRandomPlayingEnabled(isEnabled);
     }
 
     public void setPlaybackSpeed(float speed) {
-        if (playerCoordinatorInteractor.isPlayerTypeActive(LIBRARY)) {
-            libraryPlayerInteractor.setPlaybackSpeed(speed);
-            return;
-        }
-        if (playerCoordinatorInteractor.isPlayerTypeActive(EXTERNAL)) {
-            externalPlayerInteractor.setPlaybackSpeed(speed);
-        }
+        commonPlayerInteractor.setPlaybackSpeed(speed);
     }
 
     public void fastSeekBackward() {
-        if (playerCoordinatorInteractor.isPlayerTypeActive(LIBRARY)) {
-            libraryPlayerInteractor.fastSeekBackward();
-            return;
-        }
-        if (playerCoordinatorInteractor.isPlayerTypeActive(EXTERNAL)) {
-            externalPlayerInteractor.fastSeekBackward();
-        }
+        commonPlayerInteractor.fastSeekBackward();
     }
 
     public void fastSeekForward() {
-        if (playerCoordinatorInteractor.isPlayerTypeActive(LIBRARY)) {
-            libraryPlayerInteractor.fastSeekForward();
-            return;
-        }
-        if (playerCoordinatorInteractor.isPlayerTypeActive(EXTERNAL)) {
-            externalPlayerInteractor.fastSeekForward();
-        }
+        commonPlayerInteractor.fastSeekForward();
+    }
+
+    public void reset() {
+        commonPlayerInteractor.reset();
+    }
+
+    public Observable<Long> getTrackPositionChangeObservable() {
+        return commonPlayerInteractor.getTrackPositionChangeObservable();
+    }
+
+    public Single<Long> getTrackPosition() {
+        return commonPlayerInteractor.getTrackPosition();
     }
 
     public Completable shuffleAllAndPlay() {
@@ -146,34 +134,16 @@ public class MusicServiceInteractor {
                 );
     }
 
+    public Observable<Float> getPlaybackSpeedObservable() {
+        return commonPlayerInteractor.getPlaybackSpeedObservable();
+    }
+
     public Observable<Integer> getRepeatModeObservable() {
-        return playerCoordinatorInteractor.getActivePlayerTypeObservable()
-                .switchMap(playerType -> {
-                    switch (playerType) {
-                        case LIBRARY: {
-                            return libraryPlayerInteractor.getRepeatModeObservable();
-                        }
-                        case EXTERNAL: {
-                            return externalPlayerInteractor.getExternalPlayerRepeatModeObservable();
-                        }
-                        default: throw new IllegalStateException();
-                    }
-                });
+        return commonPlayerInteractor.getRepeatModeObservable();
     }
 
     public Observable<Boolean> getRandomModeObservable() {
-        return playerCoordinatorInteractor.getActivePlayerTypeObservable()
-                .switchMap(playerType -> {
-                    switch (playerType) {
-                        case LIBRARY: {
-                            return libraryPlayerInteractor.getRandomPlayingObservable();
-                        }
-                        case EXTERNAL: {
-                            return Observable.fromCallable(() -> false);
-                        }
-                        default: throw new IllegalStateException();
-                    }
-                });
+        return commonPlayerInteractor.getRandomModeObservable();
     }
 
     public Observable<MusicNotificationSetting> getNotificationSettingObservable() {
@@ -264,10 +234,7 @@ public class MusicServiceInteractor {
         return getPlaylistItemsObservable(playListId)
                 .firstOrError()
                 .flatMapCompletable(compositions ->
-                        libraryPlayerInteractor.setCompositionsQueueAndPlay(
-                                ListUtils.mapList(compositions, PlayListItem::getComposition),
-                                position
-                        )
+                        libraryPlayerInteractor.setCompositionsQueueAndPlay(compositions, position)
                 );
     }
 
@@ -312,4 +279,5 @@ public class MusicServiceInteractor {
                 settingsRepository.getCoversOnLockScreenEnabledObservable(),
                 (coversInNotification, coversOnLockScreen) -> coversInNotification && coversOnLockScreen);
     }
+
 }

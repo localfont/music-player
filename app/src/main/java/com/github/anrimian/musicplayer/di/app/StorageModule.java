@@ -8,7 +8,7 @@ import android.content.Context;
 import android.os.Build;
 import android.os.Environment;
 
-import com.github.anrimian.filesync.SyncInteractor;
+import com.github.anrimian.fsync.SyncInteractor;
 import com.github.anrimian.musicplayer.data.database.LibraryDatabase;
 import com.github.anrimian.musicplayer.data.database.dao.albums.AlbumsDao;
 import com.github.anrimian.musicplayer.data.database.dao.albums.AlbumsDaoWrapper;
@@ -18,10 +18,13 @@ import com.github.anrimian.musicplayer.data.database.dao.compositions.Compositio
 import com.github.anrimian.musicplayer.data.database.dao.compositions.CompositionsDaoWrapper;
 import com.github.anrimian.musicplayer.data.database.dao.compositions.StorageCompositionsInserter;
 import com.github.anrimian.musicplayer.data.database.dao.folders.FoldersDaoWrapper;
+import com.github.anrimian.musicplayer.data.database.dao.genre.GenreDao;
 import com.github.anrimian.musicplayer.data.database.dao.genre.GenresDaoWrapper;
 import com.github.anrimian.musicplayer.data.database.dao.ignoredfolders.IgnoredFoldersDao;
 import com.github.anrimian.musicplayer.data.database.dao.play_list.PlayListsDaoWrapper;
 import com.github.anrimian.musicplayer.data.repositories.library.edit.EditorRepositoryImpl;
+import com.github.anrimian.musicplayer.data.repositories.player.ExternalAudioFileCache;
+import com.github.anrimian.musicplayer.data.repositories.player.ExternalMediaSourceRepositoryImpl;
 import com.github.anrimian.musicplayer.data.repositories.scanner.MediaScannerRepositoryImpl;
 import com.github.anrimian.musicplayer.data.repositories.scanner.StorageCompositionAnalyzer;
 import com.github.anrimian.musicplayer.data.repositories.scanner.files.FileScanner;
@@ -43,6 +46,7 @@ import com.github.anrimian.musicplayer.domain.interactors.editor.EditorInteracto
 import com.github.anrimian.musicplayer.domain.interactors.player.CompositionSourceInteractor;
 import com.github.anrimian.musicplayer.domain.models.sync.FileKey;
 import com.github.anrimian.musicplayer.domain.repositories.EditorRepository;
+import com.github.anrimian.musicplayer.domain.repositories.ExternalMediaSourceRepository;
 import com.github.anrimian.musicplayer.domain.repositories.LibraryRepository;
 import com.github.anrimian.musicplayer.domain.repositories.LoggerRepository;
 import com.github.anrimian.musicplayer.domain.repositories.MediaScannerRepository;
@@ -239,7 +243,8 @@ public class StorageModule {
                                                      ArtistsDao artistsDao,
                                                      ArtistsDaoWrapper artistsDaoWrapper,
                                                      AlbumsDao albumsDao,
-                                                     AlbumsDaoWrapper albumsDaoWrapper) {
+                                                     AlbumsDaoWrapper albumsDaoWrapper,
+                                                     GenreDao genreDao) {
         return new StorageCompositionsInserter(libraryDatabase,
                 compositionsDao,
                 compositionsDaoWrapper,
@@ -247,7 +252,8 @@ public class StorageModule {
                 artistsDao,
                 artistsDaoWrapper,
                 albumsDao,
-                albumsDaoWrapper);
+                albumsDaoWrapper,
+                genreDao);
     }
 
     @Provides
@@ -258,6 +264,24 @@ public class StorageModule {
                                                     CompositionSourceEditor compositionSourceEditor,
                                                     @Named(IO_SCHEDULER) Scheduler ioScheduler) {
         return new StorageSourceRepositoryImpl(compositionsDao, storageMusicProvider, compositionSourceEditor, ioScheduler);
+    }
+
+    @Provides
+    @Nonnull
+    @Singleton
+    ExternalAudioFileCache externalAudioFileCache(Context context,
+                                                  Analytics analytics,
+                                                  @Named(IO_SCHEDULER) Scheduler ioScheduler) {
+        return new ExternalAudioFileCache(context, analytics, ioScheduler);
+    }
+
+    @Provides
+    @Nonnull
+    @Singleton
+    ExternalMediaSourceRepository externalMediaSourceRepository(Context context,
+                                                                @Named(IO_SCHEDULER) Scheduler ioScheduler,
+                                                                ExternalAudioFileCache cache) {
+        return new ExternalMediaSourceRepositoryImpl(context, ioScheduler, cache);
     }
 
 }

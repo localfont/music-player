@@ -14,6 +14,7 @@ public interface Constants {
         int CHANGE_REPEAT_MODE = 6;
         int REWIND = 7;
         int FAST_FORWARD = 8;
+        int CLOSE = 9;
     }
 
     interface Arguments {
@@ -21,13 +22,13 @@ public interface Constants {
         String ORDERS_ARG = "orders_arg";
         String PLAY_LIST_ID_ARG = "play_list_id_arg";
         String ID_ARG = "id_arg";//we can replace other `id_arg`
-        String STATUS_BAR_COLOR_ATTR_ARG = "status_bar_color_attr";
         String OPEN_PLAYER_PANEL_ARG = "open_player_panel_arg";
         String COMPOSITION_ID_ARG = "composition_id_arg";
         String ALBUM_ID_ARG = "album_id_arg";
         String TITLE_ARG = "title_arg";
         String POSITIVE_BUTTON_ARG = "positive_button_arg";
         String NEGATIVE_BUTTON_ARG = "negative_button_arg";
+        String NEUTRAL_BUTTON_ARG = "neutral_button_arg";
         String EDIT_TEXT_HINT = "edit_text_hint";
         String EDIT_TEXT_VALUE = "edit_text_value";
         String CAN_BE_EMPTY_ARG = "can_be_empty_arg";
@@ -43,6 +44,9 @@ public interface Constants {
         String DIGITS_ARG = "digits_arg";
         String CLOSE_MULTISELECT_ARG = "close_multiselect_arg";
         String PLAYLIST_IMPORT_ARG = "playlist_import_arg";
+        String DESCRIPTION_ARG = "description_arg";
+        String MESSAGE_ARG = "message_arg";
+        String MESSAGE_RES_ARG = "message_res_arg";
     }
 
     interface Tags {
@@ -62,9 +66,7 @@ public interface Constants {
         String ADD_GENRE_TAG = "add_genre_tag";
         String EDIT_GENRE_TAG = "edit_genre_tag";
         String NEW_FOLDER_NAME_TAG = "new_folder_name_tag";
-        String MESSAGE_ARG = "message_arg";
-        String MESSAGE_RES_ARG = "message_res_arg";
-        String PROGRESS_DIALOG_TAG = "progress_dialog_arg";
+        String PROGRESS_DIALOG_TAG = "progress_dialog_tag";
         String EDIT_COVER_TAG = "edit_cover_tag";
         String ENABLED_MEDIA_PLAYERS = "enabled_media_players";
         String SPEED_SELECTOR_TAG = "speed_selector_tag";
@@ -79,4 +81,10 @@ public interface Constants {
         int PLAY_LOADING = 2;
         int PAUSE = 3;
     }
+
+    interface Links {
+        String IN_APP_LINK_PREFIX = "in-app:";
+        String PLAYER_SETTINGS = "player-settings:";
+    }
+
 }

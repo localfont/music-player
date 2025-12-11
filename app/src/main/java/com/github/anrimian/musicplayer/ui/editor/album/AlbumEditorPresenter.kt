@@ -1,6 +1,6 @@
 package com.github.anrimian.musicplayer.ui.editor.album
 
-import com.github.anrimian.filesync.SyncInteractor
+import com.github.anrimian.fsync.SyncInteractor
 import com.github.anrimian.musicplayer.domain.interactors.editor.EditorInteractor
 import com.github.anrimian.musicplayer.domain.models.albums.Album
 import com.github.anrimian.musicplayer.domain.models.sync.FileKey
@@ -70,7 +70,7 @@ class AlbumEditorPresenter(
         if (lastEditAction != null) {
             RxUtils.dispose(changeDisposable, presenterDisposable)
             changeDisposable = lastEditAction!!
-                .doFinally { lastEditAction = null }
+                .doOnComplete { lastEditAction = null }
                 .subscribe(viewState::showErrorMessage)
         }
     }

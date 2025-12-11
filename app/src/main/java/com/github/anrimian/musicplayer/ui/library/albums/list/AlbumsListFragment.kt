@@ -18,6 +18,7 @@ import com.github.anrimian.musicplayer.domain.models.order.Order
 import com.github.anrimian.musicplayer.domain.models.order.OrderType
 import com.github.anrimian.musicplayer.domain.models.utils.ListPosition
 import com.github.anrimian.musicplayer.domain.utils.toLongArray
+import com.github.anrimian.musicplayer.ui.common.applyLibraryProgressViewOffset
 import com.github.anrimian.musicplayer.ui.common.dialogs.shareCompositions
 import com.github.anrimian.musicplayer.ui.common.error.ErrorCommand
 import com.github.anrimian.musicplayer.ui.common.menu.PopupMenuWindow
@@ -32,19 +33,18 @@ import com.github.anrimian.musicplayer.ui.library.common.library.BaseLibraryPres
 import com.github.anrimian.musicplayer.ui.library.common.order.SelectOrderDialogFragment
 import com.github.anrimian.musicplayer.ui.library.common.setupLibraryTitle
 import com.github.anrimian.musicplayer.ui.playlist_screens.choose.ChoosePlayListDialogFragment
-import com.github.anrimian.musicplayer.ui.playlist_screens.choose.newChoosePlayListDialogFragment
 import com.github.anrimian.musicplayer.ui.sleep_timer.SleepTimerDialogFragment
-import com.github.anrimian.musicplayer.ui.utils.fragments.BackButtonListener
+import com.github.anrimian.musicplayer.ui.utils.applyBottomInsets
 import com.github.anrimian.musicplayer.ui.utils.fragments.DialogFragmentRunner
 import com.github.anrimian.musicplayer.ui.utils.fragments.navigation.FragmentNavigation
 import com.github.anrimian.musicplayer.ui.utils.fragments.navigation.FragmentNavigationListener
 import com.github.anrimian.musicplayer.ui.utils.fragments.safeShow
+import com.github.anrimian.musicplayer.ui.utils.isTabletLand
 import com.github.anrimian.musicplayer.ui.utils.views.recycler_view.RecyclerViewUtils
 import com.github.anrimian.musicplayer.ui.utils.views.recycler_view.touch_helper.short_swipe.ShortSwipeCallback
 import moxy.ktx.moxyPresenter
 
-class AlbumsListFragment : BaseLibraryFragment(), AlbumsListView, FragmentNavigationListener,
-    BackButtonListener {
+class AlbumsListFragment : BaseLibraryFragment(), AlbumsListView, FragmentNavigationListener{
 
     private val presenter by moxyPresenter { Components.albumsComponent().albumsListPresenter() }
 
@@ -72,7 +72,12 @@ class AlbumsListFragment : BaseLibraryFragment(), AlbumsListView, FragmentNaviga
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         toolbar = requireActivity().findViewById(R.id.toolbar)
-        
+
+        binding.progressStateView.applyLibraryProgressViewOffset(requireActivity())
+        if (isTabletLand()) {
+            binding.rvAlbums.applyBottomInsets()
+        }
+
         binding.progressStateView.onTryAgainClick(presenter::onTryAgainLoadCompositionsClicked)
         
         adapter = AlbumsAdapter(
@@ -113,29 +118,22 @@ class AlbumsListFragment : BaseLibraryFragment(), AlbumsListView, FragmentNaviga
 
     override fun onFragmentResumed() {
         presenter.onFragmentResumed()
-        val toolbar: AdvancedToolbar = requireActivity().findViewById(R.id.toolbar)
-        toolbar.setupLibraryTitle(this)
-        toolbar.setSubtitle(R.string.albums)
-        toolbar.setupSearch(presenter::onSearchTextChanged, presenter.getSearchText())
-        toolbar.setupSelectionModeMenu(R.menu.library_albums_selection_menu, this::onActionModeItemClicked)
-        toolbar.setupOptionsMenu(R.menu.library_albums_menu, this::onOptionsItemClicked)
+        requireActivity().findViewById<AdvancedToolbar>(R.id.toolbar).setup {
+            setupLibraryTitle(this@AlbumsListFragment)
+            setSubtitle(R.string.albums)
+            setupSearch(presenter::onSearchTextChanged, text = presenter.getSearchText())
+            setupSelectionModeMenu(
+                R.menu.library_albums_selection_menu,
+                ::onActionModeItemClicked,
+                presenter::onExitSelectionModeClicked
+            )
+            setupOptionsMenu(R.menu.library_albums_menu, ::onOptionsItemClicked)
+        }
     }
 
     override fun onStop() {
         super.onStop()
         presenter.onStop(ViewUtils.getListPosition(layoutManager))
-    }
-
-    override fun onBackPressed(): Boolean {
-        if (toolbar.isInActionMode()) {
-            presenter.onSelectionModeBackPressed()
-            return true
-        }
-        if (toolbar.isInSearchMode()) {
-            toolbar.setSearchModeEnabled(false)
-            return true
-        }
-        return false
     }
 
     override fun getCoordinatorLayout() = binding.listContainer
@@ -203,7 +201,7 @@ class AlbumsListFragment : BaseLibraryFragment(), AlbumsListView, FragmentNaviga
             putLongArray(Constants.Arguments.IDS_ARG, albums.toLongArray(Album::id))
             putBoolean(Constants.Arguments.CLOSE_MULTISELECT_ARG, closeMultiselect)
         }
-        choosePlayListDialogRunner.show(newChoosePlayListDialogFragment(args))
+        choosePlayListDialogRunner.show(ChoosePlayListDialogFragment.newInstance(args))
     }
 
     override fun sendCompositions(compositions: List<Composition>) {
@@ -227,8 +225,8 @@ class AlbumsListFragment : BaseLibraryFragment(), AlbumsListView, FragmentNaviga
         when (item.itemId) {
             R.id.menu_order -> presenter.onOrderMenuItemClicked()
             R.id.menu_search -> toolbar.setSearchModeEnabled(true)
-            R.id.menu_sleep_timer -> SleepTimerDialogFragment().safeShow(childFragmentManager)
-            R.id.menu_equalizer -> EqualizerDialogFragment().safeShow(childFragmentManager)
+            R.id.menu_sleep_timer -> SleepTimerDialogFragment().safeShow(this)
+            R.id.menu_equalizer -> EqualizerDialogFragment().safeShow(this)
         }
     }
 

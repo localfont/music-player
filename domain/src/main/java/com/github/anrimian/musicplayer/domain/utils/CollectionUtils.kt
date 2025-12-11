@@ -59,3 +59,7 @@ inline fun <K, V> MutableMap<K, V>.getOrPut(key: K, defaultValue: () -> V?): V? 
         value
     }
 }
+
+inline fun <K, V, R> Map<out K, V>.mapKeysToMap(transform: (Map.Entry<K, V>) -> R): MutableMap<R, V> {
+    return mapKeysTo(LinkedHashMap(size), transform)
+}

@@ -9,6 +9,7 @@ import com.github.anrimian.musicplayer.R
 import com.github.anrimian.musicplayer.data.utils.preferences.SharedPreferencesHelper
 import com.github.anrimian.musicplayer.domain.utils.rx.RxUtils
 import com.github.anrimian.musicplayer.ui.utils.AndroidUtils
+import com.github.anrimian.musicplayer.ui.utils.attrColor
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.subjects.BehaviorSubject
 
@@ -58,7 +59,7 @@ class ThemeController(private val context: Context) {
         activity.recreate()
     }
 
-    fun isCircleShapeEnabled() = preferences.getBoolean(CIRCLE_SHAPE, true)
+    fun isCircleShapeEnabled() = preferences.getBoolean(CIRCLE_SHAPE, false)
 
     fun getCurrentTheme() = AppTheme.getTheme(preferences.getInt(THEME_ID, AppTheme.WHITE_PURPLE_TEAL.id))
 
@@ -137,7 +138,7 @@ class ThemeController(private val context: Context) {
             activity,
             R.string.app_name,
             activity.applicationInfo.icon,
-            AndroidUtils.getColorFromAttr(activity, R.attr.colorPrimary)
+            activity.attrColor(R.attr.colorPrimary)
         )
     }
 

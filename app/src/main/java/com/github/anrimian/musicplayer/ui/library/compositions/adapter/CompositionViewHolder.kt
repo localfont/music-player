@@ -4,7 +4,7 @@ import android.graphics.Color
 import android.view.View
 import android.view.ViewGroup
 import androidx.annotation.ColorInt
-import com.github.anrimian.filesync.models.state.file.FileSyncState
+import com.github.anrimian.fsync.models.state.file.FileSyncState
 import com.github.anrimian.musicplayer.R
 import com.github.anrimian.musicplayer.databinding.ItemStorageMusicBinding
 import com.github.anrimian.musicplayer.domain.models.composition.Composition
@@ -17,7 +17,7 @@ import com.github.anrimian.musicplayer.ui.utils.views.recycler_view.short_swipe.
 /**
  * Created on 31.10.2017.
  */
-open class CompositionViewHolder<T: Composition>(
+open class CompositionViewHolder<T : Composition>(
     parent: ViewGroup,
     onCompositionClickListener: (Int, T) -> Unit,
     onLongClickListener: (Int, T) -> Unit,
@@ -86,8 +86,8 @@ open class CompositionViewHolder<T: Composition>(
         compositionItemWrapper.showCompositionImage(isCoversEnabled)
     }
 
-    fun setFileSyncStates(fileSyncStates: Map<Long, FileSyncState>) {
-        compositionItemWrapper.showFileSyncState(fileSyncStates[composition.id])
+    fun showFileSyncState(state: FileSyncState?) {
+        compositionItemWrapper.showFileSyncState(state)
     }
 
     fun showCurrentComposition(
@@ -103,6 +103,8 @@ open class CompositionViewHolder<T: Composition>(
         showAsCurrentComposition(isCurrent)
         compositionItemWrapper.showAsPlaying(isPlaying, animate)
     }
+
+    fun getComposition() = composition
 
     protected open fun createCompositionItemWrapper(
         onCompositionClickListener: (Int, T) -> Unit,

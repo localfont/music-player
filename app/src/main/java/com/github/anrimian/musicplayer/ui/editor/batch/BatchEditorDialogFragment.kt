@@ -8,11 +8,10 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.Button
-import com.github.anrimian.filesync.models.ProgressInfo
+import com.github.anrimian.fsync.models.ProgressInfo
 import com.github.anrimian.musicplayer.R
 import com.github.anrimian.musicplayer.databinding.DialogCommonInputBinding
 import com.github.anrimian.musicplayer.ui.common.error.ErrorCommand
-import com.github.anrimian.musicplayer.ui.common.format.asInt
 import com.github.anrimian.musicplayer.ui.common.format.setExtProgress
 import com.github.anrimian.musicplayer.ui.editor.common.ErrorHandler
 import com.github.anrimian.musicplayer.ui.utils.AndroidUtils

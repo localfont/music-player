@@ -5,7 +5,6 @@ import static android.view.ViewGroup.LayoutParams.WRAP_CONTENT;
 import static com.github.anrimian.musicplayer.ui.utils.ViewUtils.animateVisibility;
 
 import android.content.Context;
-import android.content.res.Resources;
 import android.os.Handler;
 import android.util.AttributeSet;
 import android.view.Gravity;
@@ -29,20 +28,25 @@ public class ProgressStateView extends LinearLayout {
 
     private final Handler handler = new Handler();
 
+    private final int verticalMargin;
+
     private Runnable onTryAgainClick;
 
     private Views views;
 
     public ProgressStateView(Context context) {
-        super(context);
+        this(context, null);
     }
 
     public ProgressStateView(Context context, @Nullable AttributeSet attrs) {
-        super(context, attrs);
+        this(context, attrs, 0);
     }
 
     public ProgressStateView(Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
+        verticalMargin = context.getResources().getDimensionPixelSize(R.dimen.margin_small);
+        int horizontalMargin = context.getResources().getDimensionPixelSize(R.dimen.margin_normal);
+        setPadding(horizontalMargin, verticalMargin, horizontalMargin, verticalMargin);
     }
 
     public void onTryAgainClick(Runnable listener) {
@@ -122,28 +126,32 @@ public class ProgressStateView extends LinearLayout {
 
         public Views() {
             Context context = getContext();
-            Resources resources = context.getResources();
 
             root.setOrientation(VERTICAL);
             root.setGravity(Gravity.CENTER);
-            int elementsMargin = resources.getDimensionPixelSize(R.dimen.margin_normal);
-            root.setPadding(elementsMargin, elementsMargin, elementsMargin, elementsMargin);
             root.setBackgroundResource(AndroidUtils.getResourceIdFromAttr(context, android.R.attr.colorBackground));
 
             progressBar = new ProgressBar(context);
             progressBar.setVisibility(INVISIBLE);
-            root.addView(progressBar);
+            LinearLayout.LayoutParams pbParams = new LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT);
+            pbParams.topMargin = verticalMargin;
+            pbParams.bottomMargin = verticalMargin;
+            root.addView(progressBar, pbParams);
 
             ivEmpty = new ImageView(context);
             ivEmpty.setVisibility(INVISIBLE);
             ivEmpty.setContentDescription(context.getString(R.string.useless_image));
             int imageSize = AndroidUtils.dpToPx(150, context);
-            root.addView(ivEmpty, imageSize, imageSize);
+            LinearLayout.LayoutParams ivParams = new LinearLayout.LayoutParams(imageSize, imageSize);
+            ivParams.topMargin = verticalMargin;
+            ivParams.bottomMargin = verticalMargin;
+            root.addView(ivEmpty, ivParams);
 
             tvMessage = new TextView(context);
             tvMessage.setVisibility(INVISIBLE);
             LinearLayout.LayoutParams tvParams = new LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT);
-            tvParams.topMargin = elementsMargin;
+            tvParams.topMargin = verticalMargin;
+            tvParams.bottomMargin = verticalMargin;
             tvMessage.setLayoutParams(tvParams);
             tvMessage.setGravity(Gravity.CENTER_HORIZONTAL);
             tvMessage.setTextColor(AndroidUtils.getColorFromAttr(context, android.R.attr.textColorPrimary));
@@ -156,8 +164,6 @@ public class ProgressStateView extends LinearLayout {
             int buttonPadding = AndroidUtils.dpToPx(16, context);
             btnTryAgain.setPadding(buttonPadding, buttonPadding, buttonPadding, buttonPadding);
             btnTryAgain.setTextSize(18f);
-            LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT);
-            btnParams.topMargin = elementsMargin;
             btnTryAgain.setVisibility(INVISIBLE);
             btnTryAgain.setGravity(Gravity.CENTER_HORIZONTAL);
             btnTryAgain.setOnClickListener(v -> {
@@ -165,6 +171,9 @@ public class ProgressStateView extends LinearLayout {
                     onTryAgainClick.run();
                 }
             });
+            LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT);
+            btnParams.topMargin = verticalMargin;
+            btnParams.bottomMargin = verticalMargin;
             root.addView(btnTryAgain, btnParams);
         }
 
@@ -209,7 +218,7 @@ public class ProgressStateView extends LinearLayout {
             root.setVisibility(VISIBLE);
             root.setClickable(true);
             progressBar.setIndeterminate(true);
-            animateVisibility(progressBar, VISIBLE);
+            progressBar.setVisibility(VISIBLE);
             tvMessage.setVisibility(GONE);
             btnTryAgain.setVisibility(GONE);
             ivEmpty.setVisibility(GONE);

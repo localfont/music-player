@@ -1,6 +1,6 @@
 package com.github.anrimian.musicplayer.ui.player_screen.queue
 
-import com.github.anrimian.filesync.models.state.file.FileSyncState
+import com.github.anrimian.fsync.models.state.file.FileSyncState
 import com.github.anrimian.musicplayer.domain.models.composition.Composition
 import com.github.anrimian.musicplayer.domain.models.composition.DeletedComposition
 import com.github.anrimian.musicplayer.domain.models.play_queue.PlayQueueItem
@@ -52,7 +52,7 @@ interface PlayQueueView : BaseLibraryView {
     fun updatePlayQueue(items: List<PlayQueueItem>?)
 
     @SingleOneExecution
-    fun scrollQueueToPosition(position: Int, isSmoothScrollAllowed: Boolean)
+    fun scrollQueueToPosition(position: Int)
 
     @AddToEndSingle
     fun showFilesSyncState(states: Map<Long, FileSyncState>)

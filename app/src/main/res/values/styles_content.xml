@@ -1,5 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+
+    <style name="ControlPanelViewStyle">
+        <item name="android:background">?attr/playerPanelBackground</item>
+        <item name="layoutDescription">@xml/scene_detailed_music</item>
+    </style>
+
+    <style name="ControlPanelIndicatorStyle">
+        <item name="android:src">@drawable/ic_bottom_panel_open</item>
+        <item name="android:layout_marginTop">5dp</item>
+        <item name="android:alpha">0</item>
+    </style>
+
+    <style name="ControlPanelCoverStyle" parent="@style/BaseShapeableImageStyle">
+        <item name="android:layout_gravity">center|start</item>
+        <item name="android:scaleType">centerCrop</item>
+        <item name="shapeAppearance">@style/ShapeAppearance.CoverImageView</item>
+    </style>
+
     <style name="ButtonStyle">
         <item name="android:layout_width">@dimen/button_expand_size</item>
         <item name="android:layout_height">@dimen/button_expand_size</item>
@@ -8,10 +26,15 @@
         <item name="tint">@color/color_button</item>
     </style>
 
-    <style name="ButtonStyle.Main">
+    <style name="ButtonStyle.Playback">
         <item name="android:layout_width">@dimen/control_button_width</item>
         <item name="android:layout_height">@dimen/control_button_width</item>
         <item name="android:background">@drawable/bg_selectable_round_shape</item>
+    </style>
+
+    <style name="ButtonStyle.Playback.Expanded">
+        <item name="android:layout_width">@dimen/play_button_expand_size</item>
+        <item name="android:layout_height">@dimen/play_button_expand_size</item>
     </style>
 
     <style name="ButtonStyle.Menu">
@@ -68,7 +91,7 @@
     <style name="ButtonStyle.Drawer.Header">
         <item name="android:layout_width">48dp</item>
         <item name="android:layout_height">48dp</item>
-        <item name="tint">@color/color_drawer_header_button</item>
+        <item name="tint">@color/color_text_toolbar_primary</item>
     </style>
 
     <style name="TextStyle" parent="@style/Base.TextAppearance.AppCompat.Body1">
@@ -97,7 +120,7 @@
         <item name="android:background">?selectableItemBackground</item>
         <item name="android:paddingTop">@dimen/content_vertical_margin</item>
         <item name="android:paddingBottom">@dimen/content_vertical_margin</item>
-        <item name="android:paddingStart">@dimen/toolbar_content_start</item>
+        <item name="android:paddingStart">@dimen/content_horizontal_margin</item>
         <item name="android:paddingEnd">@dimen/content_horizontal_margin</item>
         <item name="android:textSize">17sp</item>
         <item name="android:textAlignment">viewStart</item>
@@ -181,6 +204,17 @@
 
     <style name="TextStyle.Composition">
         <item name="android:textStyle">bold</item>
+        <item name="android:ellipsize">end</item>
+        <item name="android:singleLine">true</item>
+    </style>
+
+    <style name="TextStyle.Composition.Panel">
+        <item name="android:textSize">@dimen/composition_panel_text_size</item>
+    </style>
+
+    <style name="TextStyle.Artist.Panel" parent="@style/TextStyle.Subtitle">
+        <item name="android:ellipsize">end</item>
+        <item name="android:singleLine">true</item>
     </style>
 
     <style name="TextStyle.ButtonHint">
@@ -189,11 +223,6 @@
         <item name="android:maxLines">2</item>
         <item name="android:ellipsize">end</item>
         <item name="android:textAlignment">center</item>
-    </style>
-
-    <style name="ButtonStyle.Main.Expanded">
-        <item name="android:layout_width">@dimen/play_button_expand_size</item>
-        <item name="android:layout_height">@dimen/play_button_expand_size</item>
     </style>
 
     <style name="BaseShapeableImageStyle">
@@ -259,11 +288,12 @@
         <item name="android:textSize">13sp</item>
     </style>
 
-    <style name="EditTextStyle" parent="@style/Widget.AppCompat.EditText">
+    <style name="EditTextStyle">
         <item name="android:minHeight">48dp</item>
         <item name="android:textColor">?android:attr/textColorPrimary</item>
         <item name="android:textColorHint">?android:attr/textColorSecondary</item>
         <item name="android:textAlignment">viewStart</item>
+        <item name="android:textCursorDrawable">@drawable/bg_accent_text_cursor</item>
     </style>
 
     <style name="TextStyle.ContentTitle">
@@ -274,6 +304,7 @@
 
     <style name="EditTextStyle.Toolbar">
         <item name="android:colorControlActivated">?attr/colorAccentDark</item>
+        <item name="android:textCursorDrawable">@drawable/bg_toolbar_text_cursor</item>
     </style>
 
     <style name="CircularProgressIndicatorStyle">

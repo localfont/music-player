@@ -17,6 +17,7 @@ import com.github.anrimian.musicplayer.ui.common.snackbars.AppSnackbar
 import com.github.anrimian.musicplayer.ui.common.toolbar.AdvancedToolbar
 import com.github.anrimian.musicplayer.ui.utils.PermissionRequester
 import com.github.anrimian.musicplayer.ui.utils.ViewUtils
+import com.github.anrimian.musicplayer.ui.utils.applyBottomInsets
 import com.github.anrimian.musicplayer.ui.utils.slidr.SlidrPanel
 import com.github.anrimian.musicplayer.ui.utils.startAppSettings
 import com.google.android.material.snackbar.Snackbar
@@ -44,12 +45,15 @@ class HeadsetSettingsFragment : MvpAppCompatFragment(), HeadsetSettingsView {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        binding.nsvContainer.applyBottomInsets()
+
         val toolbar = requireActivity().findViewById<AdvancedToolbar>(R.id.toolbar)
         toolbar.setTitle(R.string.settings)
         toolbar.setSubtitle(R.string.headset)
         toolbar.setTitleClickListener(null)
 
-        SlidrPanel.simpleSwipeBack(binding.clContainer, this, toolbar::onStackFragmentSlided)
+        SlidrPanel.simpleSwipeBack(binding.clContainer, this, toolbar::setNavigationButtonProgress)
 
         ViewUtils.onCheckChanged(binding.cbPlayOnConnect, ::onPlayOnConnectChecked)
         binding.ivPlayOnConnectDelay.setOnClickListener { presenter.onPickPlayDelayClicked() }

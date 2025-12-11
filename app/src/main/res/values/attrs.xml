@@ -22,8 +22,7 @@
     <attr name="dialogBackground" format="color"/>
     <attr name="popupPageForegroundShadowColor" format="color"/>
     <attr name="chipBackground" format="color"/>
-
-    <attr name="navigationViewPrimaryColor" format="color"/>
+    <attr name="horizontalNavBarBackground" format="color"/>
 
     <attr name="disabledColor" format="color"/>
 

@@ -1,6 +1,7 @@
 package com.github.anrimian.musicplayer.di.app;
 
 
+import static com.github.anrimian.musicplayer.di.app.SchedulerModule.COMPUTATION_SCHEDULER;
 import static com.github.anrimian.musicplayer.di.app.SchedulerModule.DB_SCHEDULER;
 import static com.github.anrimian.musicplayer.di.app.SchedulerModule.IO_SCHEDULER;
 import static com.github.anrimian.musicplayer.di.app.SchedulerModule.UI_SCHEDULER;
@@ -9,7 +10,7 @@ import android.content.Context;
 
 import androidx.annotation.NonNull;
 
-import com.github.anrimian.filesync.SyncInteractor;
+import com.github.anrimian.fsync.SyncInteractor;
 import com.github.anrimian.musicplayer.data.controllers.music.MusicPlayerControllerImpl;
 import com.github.anrimian.musicplayer.data.controllers.music.SystemMusicControllerImpl;
 import com.github.anrimian.musicplayer.data.controllers.music.equalizer.EqualizerController;
@@ -38,6 +39,7 @@ import com.github.anrimian.musicplayer.domain.interactors.library.LibraryArtists
 import com.github.anrimian.musicplayer.domain.interactors.library.LibraryCompositionsInteractor;
 import com.github.anrimian.musicplayer.domain.interactors.library.LibraryFoldersInteractor;
 import com.github.anrimian.musicplayer.domain.interactors.library.LibraryGenresInteractor;
+import com.github.anrimian.musicplayer.domain.interactors.player.CommonPlayerInteractor;
 import com.github.anrimian.musicplayer.domain.interactors.player.CompositionSourceInteractor;
 import com.github.anrimian.musicplayer.domain.interactors.player.EqualizerInteractor;
 import com.github.anrimian.musicplayer.domain.interactors.player.ExternalPlayerInteractor;
@@ -50,6 +52,7 @@ import com.github.anrimian.musicplayer.domain.interactors.playlists.PlayListsInt
 import com.github.anrimian.musicplayer.domain.models.sync.FileKey;
 import com.github.anrimian.musicplayer.domain.repositories.EditorRepository;
 import com.github.anrimian.musicplayer.domain.repositories.EqualizerRepository;
+import com.github.anrimian.musicplayer.domain.repositories.ExternalMediaSourceRepository;
 import com.github.anrimian.musicplayer.domain.repositories.LibraryRepository;
 import com.github.anrimian.musicplayer.domain.repositories.MediaScannerRepository;
 import com.github.anrimian.musicplayer.domain.repositories.PlayQueueRepository;
@@ -86,6 +89,7 @@ public class MusicModule {
                                       SystemMusicController systemMusicController,
                                       SystemServiceController systemServiceController,
                                       SettingsRepository settingsRepository,
+                                      @Named(COMPUTATION_SCHEDULER) Scheduler delayedEventsScheduler,
                                       Analytics analytics) {
         return new PlayerInteractor(musicPlayerController,
                 compositionSourceInteractor,
@@ -93,6 +97,7 @@ public class MusicModule {
                 systemMusicController,
                 systemServiceController,
                 settingsRepository,
+                delayedEventsScheduler,
                 analytics,
                 2);
     }
@@ -117,9 +122,13 @@ public class MusicModule {
     @NonNull
     @Singleton
     ExternalPlayerInteractor externalPlayerInteractor(PlayerCoordinatorInteractor interactor,
+                                                      ExternalMediaSourceRepository externalMediaSourceRepository,
                                                       SettingsRepository settingsRepository,
                                                       SystemMusicController systemMusicController) {
-        return new ExternalPlayerInteractor(interactor, settingsRepository, systemMusicController);
+        return new ExternalPlayerInteractor(interactor,
+                externalMediaSourceRepository,
+                settingsRepository,
+                systemMusicController);
     }
 
     @Provides
@@ -166,12 +175,14 @@ public class MusicModule {
     @Singleton
     MusicPlayerController musicPlayerController(SettingsRepository settingsRepository,
                                                 Context context,
+                                                @Named(IO_SCHEDULER) Scheduler ioScheduler,
                                                 @Named(UI_SCHEDULER) Scheduler uiScheduler,
                                                 EqualizerController equalizerController,
                                                 ExoPlayerMediaItemBuilder exoPlayerMediaItemBuilder,
                                                 MediaPlayerDataSourceBuilder mediaPlayerSourceBuilder) {
         return new MusicPlayerControllerImpl(settingsRepository,
                 context,
+                ioScheduler,
                 uiScheduler,
                 equalizerController,
                 exoPlayerMediaItemBuilder,
@@ -207,9 +218,21 @@ public class MusicModule {
     @Provides
     @Nonnull
     @Singleton
-    MusicServiceInteractor musicServiceInteractor(PlayerCoordinatorInteractor playerCoordinatorInteractor,
+    CommonPlayerInteractor commonPlayerInteractor(PlayerCoordinatorInteractor playerCoordinatorInteractor,
                                                   LibraryPlayerInteractor libraryPlayerInteractor,
                                                   ExternalPlayerInteractor externalPlayerInteractor,
+                                                  PlayerInteractor playerInteractor) {
+        return new CommonPlayerInteractor(playerCoordinatorInteractor,
+                libraryPlayerInteractor,
+                externalPlayerInteractor,
+                playerInteractor);
+    }
+
+    @Provides
+    @Nonnull
+    @Singleton
+    MusicServiceInteractor musicServiceInteractor(CommonPlayerInteractor commonPlayerInteractor,
+                                                  LibraryPlayerInteractor libraryPlayerInteractor,
                                                   LibraryCompositionsInteractor libraryCompositionsInteractor,
                                                   LibraryFoldersInteractor libraryFoldersInteractor,
                                                   LibraryArtistsInteractor libraryArtistsInteractor,
@@ -217,9 +240,8 @@ public class MusicModule {
                                                   LibraryGenresInteractor libraryGenresInteractor,
                                                   PlayListsInteractor playListsInteractor,
                                                   SettingsRepository settingsRepository) {
-        return new MusicServiceInteractor(playerCoordinatorInteractor,
+        return new MusicServiceInteractor(commonPlayerInteractor,
                 libraryPlayerInteractor,
-                externalPlayerInteractor,
                 libraryCompositionsInteractor,
                 libraryFoldersInteractor,
                 libraryArtistsInteractor,

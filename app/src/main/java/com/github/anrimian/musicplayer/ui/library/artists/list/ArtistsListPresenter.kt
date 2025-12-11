@@ -109,7 +109,7 @@ class ArtistsListPresenter(
         shareArtistCompositions(ArrayList(selectedArtists))
     }
 
-    fun onSelectionModeBackPressed() {
+    fun onExitSelectionModeClicked() {
         closeSelectionMode()
     }
 

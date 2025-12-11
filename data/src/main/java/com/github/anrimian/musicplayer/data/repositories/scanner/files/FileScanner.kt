@@ -3,7 +3,6 @@ package com.github.anrimian.musicplayer.data.repositories.scanner.files
 import com.github.anrimian.musicplayer.data.database.dao.compositions.CompositionsDaoWrapper
 import com.github.anrimian.musicplayer.data.storage.exceptions.TagReaderException
 import com.github.anrimian.musicplayer.data.storage.source.CompositionSourceEditor
-import com.github.anrimian.musicplayer.domain.Constants.TRIGGER
 import com.github.anrimian.musicplayer.domain.interactors.analytics.Analytics
 import com.github.anrimian.musicplayer.domain.models.composition.FullComposition
 import com.github.anrimian.musicplayer.domain.models.composition.content.CompositionContentSource
@@ -21,12 +20,6 @@ import io.reactivex.rxjava3.subjects.BehaviorSubject
 import java.io.FileNotFoundException
 import java.util.*
 import java.util.concurrent.TimeUnit
-
-//apply genres data
-
-private const val FILES_TO_SCAN_COUNT = 150
-private const val READ_RETRY_TIMES = 2L
-private const val READ_FILE_TIMEOUT_SECONDS = 6L
 
 class FileScanner(
     private val compositionsDao: CompositionsDaoWrapper,
@@ -47,10 +40,10 @@ class FileScanner(
         runFileScanner()
     }
 
-    fun runScanCompositionFile(composition: FullComposition) {
-        scanCompositionFile(composition)
+    fun runScanCompositionFile(composition: FullComposition): Boolean {
+        return scanCompositionFile(composition)
             .subscribeOn(scheduler)
-            .subscribe()
+            .blockingGet()
     }
 
     fun getStateObservable(): Observable<FileScannerState> = stateSubject.distinctUntilChanged()
@@ -99,15 +92,14 @@ class FileScanner(
         stateRepository.lastCompleteScanTime = System.currentTimeMillis()
     }
 
-    private fun scanCompositionFile(composition: FullComposition): Single<*> {
+    private fun scanCompositionFile(composition: FullComposition): Single<Boolean> {
         return Single.just(composition)
             .flatMapMaybe(this::getCompositionSource)
             .flatMap(this::getAudioFileInfo)
-            .doOnSuccess { info -> compositionsDao.updateCompositionByFileInfo(composition, info) }
+            .map { info -> compositionsDao.updateCompositionByFileInfo(composition, info) }
             .doOnError(this::processError)
-            .map { TRIGGER }
-            .defaultIfEmpty(TRIGGER)
-            .onErrorReturnItem(TRIGGER)
+            .defaultIfEmpty(false)
+            .onErrorReturnItem(false)
             .doOnSuccess { compositionsDao.setCompositionLastFileScanTime(composition, Date()) }
     }
 
@@ -130,4 +122,11 @@ class FileScanner(
         }
         analytics.processNonFatalError(throwable)
     }
+
+    private companion object {
+        const val FILES_TO_SCAN_COUNT = 150
+        const val READ_RETRY_TIMES = 2L
+        const val READ_FILE_TIMEOUT_SECONDS = 6L
+    }
+
 }

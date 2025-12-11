@@ -1,6 +1,6 @@
 package com.github.anrimian.musicplayer.ui.editor.artist
 
-import com.github.anrimian.filesync.SyncInteractor
+import com.github.anrimian.fsync.SyncInteractor
 import com.github.anrimian.musicplayer.domain.interactors.editor.EditorInteractor
 import com.github.anrimian.musicplayer.domain.models.sync.FileKey
 import com.github.anrimian.musicplayer.ui.common.error.parser.ErrorParser

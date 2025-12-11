@@ -1,7 +1,7 @@
 package com.github.anrimian.musicplayer.ui.common.dialogs.share
 
-import com.github.anrimian.filesync.SyncInteractor
-import com.github.anrimian.filesync.models.state.file.FileSyncState
+import com.github.anrimian.fsync.SyncInteractor
+import com.github.anrimian.fsync.models.state.file.FileTaskType
 import com.github.anrimian.musicplayer.domain.interactors.player.CompositionSourceInteractor
 import com.github.anrimian.musicplayer.domain.models.sync.FileKey
 import com.github.anrimian.musicplayer.ui.common.error.parser.ErrorParser
@@ -37,9 +37,10 @@ class ShareCompositionsPresenter(
                     .observeOn(uiScheduler)
                     .doOnSubscribe { viewState.showProcessedFileCount(++preparedCount, ids.size) }
             }
-            .subscribe { fileSyncState ->
-                if (fileSyncState is FileSyncState.Downloading) {
-                    viewState.showDownloadingFileInfo(fileSyncState.getProgress())
+            .subscribe { fileSyncStateOpt ->
+                val syncState = fileSyncStateOpt.value
+                if (syncState?.taskType == FileTaskType.DOWNLOAD) {
+                    viewState.showDownloadingFileInfo(syncState.getProgress())
                 }
             }
         sourceInteractor.getLibraryCompositionSources(ids.asIterable(), currentFileIdSubject)

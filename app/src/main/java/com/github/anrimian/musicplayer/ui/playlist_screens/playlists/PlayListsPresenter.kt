@@ -44,6 +44,10 @@ class PlayListsPresenter(
         subscribeOnPlayLists()
     }
 
+    fun onTryAgainButtonClicked() {
+        subscribeOnPlayLists()
+    }
+
     fun onStop(listPosition: ListPosition?) {
         playListsInteractor.saveListPosition(listPosition)
     }
@@ -111,7 +115,7 @@ class PlayListsPresenter(
         sharePlaylistsCompositions(ArrayList(selectedPlaylists))
     }
 
-    fun onSelectionModeBackPressed() {
+    fun onExitSelectionModeClicked() {
         closeSelectionMode()
     }
 
@@ -150,7 +154,7 @@ class PlayListsPresenter(
     fun onDeletePlayListDialogConfirmed(playLists: Collection<PlayList>) {
         playListsInteractor.deletePlayLists(playLists)
             .subscribe(
-                { viewState.showPlayListsDeleteSuccess(playLists) },
+                { onDeletePlaylistsSuccess(playLists) },
                 viewState::showDeletePlayListError
             )
     }
@@ -193,6 +197,13 @@ class PlayListsPresenter(
     fun getSelectedPlaylists(): HashSet<PlayList> = selectedPlaylists
 
     fun getSearchText() = searchText
+
+    private fun onDeletePlaylistsSuccess(playLists: Collection<PlayList>) {
+        viewState.showPlayListsDeleteSuccess(playLists)
+        if (selectedPlaylists.isNotEmpty()) {
+            closeSelectionMode()
+        }
+    }
 
     private fun sharePlaylistsCompositions(playlists: List<PlayList>) {
         playListsInteractor.getCompositionsInPlaylists(playlists)
@@ -260,7 +271,10 @@ class PlayListsPresenter(
         RxUtils.dispose(playlistsDisposable, presenterDisposable)
         playlistsDisposable = playListsInteractor.getPlayListsObservable(searchText)
             .observeOn(uiScheduler)
-            .subscribe(this::onPlayListsReceived)
+            .subscribe(
+                this::onPlayListsReceived,
+                { t -> viewState.showErrorState(errorParser.parseError(t)) }
+            )
         presenterDisposable.add(playlistsDisposable!!)
     }
 

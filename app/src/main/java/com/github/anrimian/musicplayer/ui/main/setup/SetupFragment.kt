@@ -11,6 +11,8 @@ import com.github.anrimian.musicplayer.databinding.FragmentStartBinding
 import com.github.anrimian.musicplayer.di.Components
 import com.github.anrimian.musicplayer.ui.player_screen.PlayerFragment
 import com.github.anrimian.musicplayer.ui.utils.PermissionRequester
+import com.github.anrimian.musicplayer.ui.utils.applyBottomInsets
+import com.github.anrimian.musicplayer.ui.utils.applyTopInsets
 import com.github.anrimian.musicplayer.ui.utils.startAppSettings
 import moxy.MvpAppCompatFragment
 import moxy.ktx.moxyPresenter
@@ -22,7 +24,7 @@ class SetupFragment : MvpAppCompatFragment(), SetupView {
     
     private val presenter by moxyPresenter { SetupPresenter() }
     
-    private lateinit var viewBinding: FragmentStartBinding
+    private lateinit var binding: FragmentStartBinding
 
     private val permissionRequester = PermissionRequester(this, this::onFilesPermissionResult)
 
@@ -31,13 +33,16 @@ class SetupFragment : MvpAppCompatFragment(), SetupView {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        viewBinding = FragmentStartBinding.inflate(inflater, container, false)
-        return viewBinding.root
+        binding = FragmentStartBinding.inflate(inflater, container, false)
+        return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        viewBinding.progressStateView.onTryAgainClick { onTryAgainButtonClicked() }
+        binding.toolbar.applyTopInsets()
+        binding.root.applyBottomInsets()
+
+        binding.progressStateView.onTryAgainClick { onTryAgainButtonClicked() }
     }
 
     override fun onResume() {
@@ -52,11 +57,11 @@ class SetupFragment : MvpAppCompatFragment(), SetupView {
     }
 
     override fun showDeniedPermissionMessage() {
-        viewBinding.progressStateView.showMessage(R.string.can_not_work_without_file_permission, true)
+        binding.progressStateView.showMessage(R.string.can_not_work_without_file_permission, true)
     }
 
     override fun showStub() {
-        viewBinding.progressStateView.hideAll()
+        binding.progressStateView.hideAll()
     }
 
     override fun startSystemServices() {
@@ -64,6 +69,7 @@ class SetupFragment : MvpAppCompatFragment(), SetupView {
         appComponent.widgetUpdater().start()
         appComponent.notificationsDisplayer().removeErrorNotification()
         appComponent.mediaScannerRepository().runStorageObserver()
+        appComponent.musicServiceInteractor().prepare()
     }
 
     override fun goToMainScreen() {

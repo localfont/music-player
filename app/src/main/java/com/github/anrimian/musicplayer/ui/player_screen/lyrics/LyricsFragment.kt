@@ -13,7 +13,10 @@ import com.github.anrimian.musicplayer.di.Components
 import com.github.anrimian.musicplayer.ui.editor.lyrics.LyricsEditorActivity
 import com.github.anrimian.musicplayer.ui.equalizer.EqualizerDialogFragment
 import com.github.anrimian.musicplayer.ui.sleep_timer.SleepTimerDialogFragment
+import com.github.anrimian.musicplayer.ui.utils.applyBottomInsets
 import com.github.anrimian.musicplayer.ui.utils.fragments.safeShow
+import com.github.anrimian.musicplayer.ui.utils.isLandscape
+import com.github.anrimian.musicplayer.ui.utils.isTablet
 import com.github.anrimian.musicplayer.ui.utils.views.menu.ActionMenuUtil
 import moxy.MvpAppCompatFragment
 import moxy.ktx.moxyPresenter
@@ -41,7 +44,11 @@ class LyricsFragment: MvpAppCompatFragment(), LyricsView {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        clPlayQueueContainer = requireActivity().findViewById(R.id.cl_play_queue_container)
+        if (requireContext().isLandscape() && !requireContext().isTablet()) {
+            binding.nsvContainer.applyBottomInsets()
+        }
+
+        clPlayQueueContainer = requireActivity().findViewById(R.id.clPlayerPagerContainer)
         acvToolbar = requireActivity().findViewById(R.id.acvPlayQueue)
 
         binding.progressStateView.onTryAgainClick(presenter::onEditLyricsClicked)

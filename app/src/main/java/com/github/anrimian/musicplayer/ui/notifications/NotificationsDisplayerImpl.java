@@ -67,7 +67,7 @@ public class NotificationsDisplayerImpl implements NotificationsDisplayer {
                 .setContentTitle(context.getString(R.string.playing_error))
                 .setContentText(context.getString(errorMessageId))
                 .setColor(getColor(context, R.color.default_notification_color))
-                .setSmallIcon(R.drawable.ic_music_box)
+                .setSmallIcon(R.drawable.ic_notification_icon)
                 .setVibrate(new long[]{100L, 100L})
                 .setContentIntent(pIntent)
                 .setDefaults(Notification.DEFAULT_ALL)

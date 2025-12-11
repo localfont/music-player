@@ -3,7 +3,7 @@ package com.github.anrimian.musicplayer.ui.player_screen.queue.adapter
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import com.github.anrimian.filesync.models.state.file.FileSyncState
+import com.github.anrimian.fsync.models.state.file.FileSyncState
 import com.github.anrimian.musicplayer.R
 import com.github.anrimian.musicplayer.domain.models.composition.Composition
 import com.github.anrimian.musicplayer.domain.models.play_queue.PlayQueueItem
@@ -52,13 +52,12 @@ class PlayQueueViewHolder(
 
     fun bind(item: PlayQueueItem, showCovers: Boolean) {
         playQueueItem = item
-        val composition = item.composition
-        compositionItemWrapper.bind(composition, showCovers)
+        compositionItemWrapper.bind(item, showCovers)
     }
 
     fun update(item: PlayQueueItem, payloads: List<*>) {
         playQueueItem = item
-        compositionItemWrapper.update(item.composition, payloads)
+        compositionItemWrapper.update(item, payloads)
     }
 
     fun setCoversVisible(visible: Boolean) {
@@ -74,7 +73,7 @@ class PlayQueueViewHolder(
     }
 
     fun setFileSyncStates(fileSyncStates: Map<Long, FileSyncState>) {
-        compositionItemWrapper.showFileSyncState(fileSyncStates[playQueueItem.composition.id])
+        compositionItemWrapper.showFileSyncState(fileSyncStates[playQueueItem.id])
     }
 
     fun getPlayQueueItem() = playQueueItem

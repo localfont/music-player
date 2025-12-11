@@ -10,14 +10,16 @@ import com.github.anrimian.musicplayer.R
 import com.github.anrimian.musicplayer.databinding.FragmentAboutBinding
 import com.github.anrimian.musicplayer.di.Components
 import com.github.anrimian.musicplayer.ui.common.toolbar.AdvancedToolbar
+import com.github.anrimian.musicplayer.ui.settings.player.PlayerSettingsFragment
 import com.github.anrimian.musicplayer.ui.utils.ViewUtils
+import com.github.anrimian.musicplayer.ui.utils.applyBottomInsets
+import com.github.anrimian.musicplayer.ui.utils.fragments.navigation.FragmentNavigation
 import com.github.anrimian.musicplayer.ui.utils.fragments.navigation.FragmentNavigationListener
 import com.github.anrimian.musicplayer.ui.utils.getAppInfo
 import com.github.anrimian.musicplayer.ui.utils.slidr.SlidrPanel
 import com.github.anrimian.musicplayer.utils.logger.FileLog
 
-class AboutAppFragment : Fragment(),
-    FragmentNavigationListener {
+class AboutAppFragment : Fragment(), FragmentNavigationListener {
     
     private lateinit var binding: FragmentAboutBinding
     
@@ -34,8 +36,9 @@ class AboutAppFragment : Fragment(),
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        setHasOptionsMenu(true)
         val toolbar: AdvancedToolbar = requireActivity().findViewById(R.id.toolbar)
+
+        binding.nsvContainer.applyBottomInsets()
 
         val appComponent = Components.getAppComponent()
         fileLog = appComponent.fileLog()
@@ -59,19 +62,23 @@ class AboutAppFragment : Fragment(),
         binding.cbShowReportDialogOnStart.isChecked = loggerRepository.isReportDialogOnStartEnabled()
         ViewUtils.onCheckChanged(binding.cbShowReportDialogOnStart, loggerRepository::showReportDialogOnStart)
 
-        SlidrPanel.simpleSwipeBack(binding.containerView, this, toolbar::onStackFragmentSlided)
+        SlidrPanel.simpleSwipeBack(binding.nsvContainer, this, toolbar::setNavigationButtonProgress)
     }
 
     override fun onFragmentResumed() {
-        requireActivity().findViewById<AdvancedToolbar>(R.id.toolbar).setup { config ->
-            config.setTitle(R.string.app_name)
+        requireActivity().findViewById<AdvancedToolbar>(R.id.toolbar).setup {
+            setTitle(R.string.app_name)
             val appInfo = requireContext().getAppInfo()
-            config.setSubtitle(getString(
+            setSubtitle(getString(
                 R.string.version_template,
                 appInfo.versionName,
                 appInfo.versionCode
             ))
         }
+    }
+
+    fun openPlayerSettings() {
+        FragmentNavigation.from(parentFragmentManager).addNewFragment(PlayerSettingsFragment())
     }
 
     private fun deleteLogFile() {
@@ -82,7 +89,8 @@ class AboutAppFragment : Fragment(),
 
     private fun setLogActionsVisibility(isLogExists: Boolean) {
         val logActionsVisibility = if (isLogExists) View.VISIBLE else View.GONE
-        binding.logActionsContainer.visibility = logActionsVisibility
+        binding.llLogActions.visibility = logActionsVisibility
         binding.tvLogInfo.visibility = logActionsVisibility
     }
+
 }

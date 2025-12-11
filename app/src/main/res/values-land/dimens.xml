@@ -1,10 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!--modal bottom sheet-->
-    <dimen name="sheet_dialog_title_expanded_size">18sp</dimen>
 
+    <!--player bottom sheet-->
+    <dimen name="bottom_sheet_expand_height">-1px</dimen><!--match_parent-->
+    <dimen name="panel_title_margin_start">8dp</dimen>
+
+    <!--play queue-->
+    <integer name="play_queue_scroll_window_top_offset">1</integer>
+    <integer name="play_queue_scroll_window_bottom_offset">0</integer>
+
+    <!--modal bottom sheet-->
     <item name="choose_playlist_dialog_height" type="dimen" format="float">0.7</item>
-    <item name="composition_action_dialog_height" type="dimen" format="float">0.9</item>
 
     <!--snackbar-->
     <dimen name="snackbar_padding_vertical">8dp</dimen>

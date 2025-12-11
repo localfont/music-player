@@ -2,32 +2,36 @@ package com.github.anrimian.musicplayer.domain.models.sync
 
 import com.github.anrimian.musicplayer.domain.utils.normalize
 
-open class FileKey(
-    val name: String,
-    val parentPath: String
-) {
+class FileKey(val path: String) {
 
-    private val normalizedName = normalize(name)
-    private val normalizedParentPath = normalize(parentPath)
+    constructor(name: String, parentPath: String) : this(
+        when {
+            parentPath.isEmpty() -> name
+            parentPath.endsWith("/") -> "$parentPath$name"
+            else -> "$parentPath/$name"
+        }
+    )
+
+    val name by lazy { path.substringAfterLast('/', path) }
+    val parentPath by lazy { path.substringBeforeLast('/', "") }
+
+    private val normalizedPath = normalize(path)
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is FileKey) return false
 
-        if (normalizedName != other.normalizedName) return false
-        if (normalizedParentPath != other.normalizedParentPath) return false
+        if (normalizedPath != other.normalizedPath) return false
 
         return true
     }
 
     override fun hashCode(): Int {
-        var result = normalizedName.hashCode()
-        result = 31 * result + normalizedParentPath.hashCode()
-        return result
+        return normalizedPath.hashCode()
     }
 
     override fun toString(): String {
-        return "FileKey(name='$name', parentPath='$parentPath')"
+        return path
     }
 
 }

@@ -16,6 +16,7 @@ import com.github.anrimian.musicplayer.ui.common.theme.ThemeController
 import com.github.anrimian.musicplayer.ui.common.toolbar.AdvancedToolbar
 import com.github.anrimian.musicplayer.ui.settings.themes.view.ThemesAdapter
 import com.github.anrimian.musicplayer.ui.utils.ViewUtils
+import com.github.anrimian.musicplayer.ui.utils.applyBottomInsets
 import com.github.anrimian.musicplayer.ui.utils.colorFromAttr
 import com.github.anrimian.musicplayer.ui.utils.slidr.SlidrPanel
 import com.r0adkll.slidr.model.SlidrInterface
@@ -39,6 +40,9 @@ class ThemeSettingsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        binding.nsvContainer.applyBottomInsets()
+
         themeController = Components.getAppComponent().themeController()
         
         val toolbar = requireActivity().findViewById<AdvancedToolbar>(R.id.toolbar)
@@ -49,7 +53,7 @@ class ThemeSettingsFragment : Fragment() {
         slidrInterface = SlidrPanel.simpleSwipeBack(
             binding.nsvContainer, 
             this, 
-            toolbar::onStackFragmentSlided
+            toolbar::setNavigationButtonProgress
         )
         
         binding.rvThemes.layoutManager = GridLayoutManager(

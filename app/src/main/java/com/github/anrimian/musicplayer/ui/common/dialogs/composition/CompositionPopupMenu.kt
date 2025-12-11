@@ -57,6 +57,10 @@ fun showCompositionPopupMenu(
         sb.append(FormatUtils.formatCompositionAuthor(composition, context))
         sb.append(FormatUtils.formatMilliseconds(composition.duration))
         sb.append(FormatUtils.formatSize(context, composition.size))
+        val comment = composition.comment
+        if (!comment.isNullOrBlank()) {
+            sb.appendNewLine(comment)
+        }
         binding.tvCompositionInfo.text = sb
     }
 
@@ -69,7 +73,7 @@ fun showCompositionPopupMenu(
         val menuAdapter = PopupMenuWindow.createMenuAdapter(menuItems, listener, popupWindowRef)
         menuBinding.rvMenuItems.adapter = ConcatAdapter(headerItem, menuAdapter)
 
-        popupWindowRef.set(AppPopupWindow.showPopupWindow(anchorView, menuBinding.root, gravity, screenMargin))
+        popupWindowRef.set(AppPopupWindow.showPopupWindow(anchorView, menuBinding.root, screenMargin, gravity))
     } else {
         val secondaryMenuHeaderItem = SingleItemAdapter { inflater, parent ->
             PartialPopupPagerSecondaryHeaderBinding.inflate(inflater, parent, false).apply {

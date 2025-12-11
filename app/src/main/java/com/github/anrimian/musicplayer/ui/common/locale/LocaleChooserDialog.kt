@@ -12,7 +12,7 @@ import com.github.anrimian.musicplayer.R
 import com.github.anrimian.musicplayer.databinding.DialogMenuBinding
 import com.github.anrimian.musicplayer.ui.utils.dialogs.menu.MenuAdapter
 import com.github.anrimian.musicplayer.ui.utils.views.menu.SimpleMenuBuilder
-import java.util.*
+import java.util.Locale
 
 private const val FOLLOW_SYSTEM_LANGUAGE_ID = -1
 
@@ -37,8 +37,7 @@ fun showLocaleChooserDialog(context: Context, onCompleteListener: (Locale?) -> U
         .setNegativeButton(R.string.close) { _, _ -> }
         .show()
 
-    val menuAdapter = MenuAdapter(menuBuilder.items, R.layout.item_dialog_menu)
-    menuAdapter.setOnItemClickListener { menuItem ->
+    val menuAdapter = MenuAdapter(menuBuilder.items, R.layout.item_dialog_menu) { menuItem ->
         val itemId = menuItem.itemId
         val locale = if (itemId == FOLLOW_SYSTEM_LANGUAGE_ID) {
             null
@@ -77,7 +76,12 @@ private fun getAppLanguages(
         val defaultString = res2.getString(anyStringResId)
 
         if (s1 != defaultString || currentLocale == defaultLocale) {
-            listAppLocales.add(currentLocale)
+            if (currentLocale == Locale.CHINESE) {
+                listAppLocales.add(Locale.forLanguageTag("zh-Hans"))
+                listAppLocales.add(Locale.forLanguageTag("zh-Hant-TW"))
+            } else {
+                listAppLocales.add(currentLocale)
+            }
         }
     }
     return listAppLocales

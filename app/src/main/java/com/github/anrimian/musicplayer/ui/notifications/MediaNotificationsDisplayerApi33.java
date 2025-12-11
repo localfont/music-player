@@ -82,7 +82,7 @@ public class MediaNotificationsDisplayerApi33 implements MediaNotificationsDispl
         return new NotificationCompat.Builder(context, FOREGROUND_CHANNEL_ID)
                 .setContentTitle("")
                 .setContentText("")
-                .setSmallIcon(R.drawable.ic_music_box)
+                .setSmallIcon(R.drawable.ic_notification_icon)
                 .setShowWhen(false)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
@@ -97,6 +97,7 @@ public class MediaNotificationsDisplayerApi33 implements MediaNotificationsDispl
                                             @Nullable CompositionSource source,
                                             MediaSessionCompat mediaSession,
                                             int repeatMode,
+                                            boolean randomMode,
                                             @Nullable MusicNotificationSetting notificationSetting,
                                             boolean reloadCover) {
         Notification notification = getDefaultMusicNotification(isPlayingState,
@@ -113,6 +114,7 @@ public class MediaNotificationsDisplayerApi33 implements MediaNotificationsDispl
                                              @Nullable CompositionSource source,
                                              MediaSessionCompat mediaSession,
                                              int repeatMode,
+                                             boolean randomMode,
                                              MusicNotificationSetting notificationSetting,
                                              boolean reloadCover) {
         if (!isNotificationVisible(notificationManager, FOREGROUND_NOTIFICATION_ID)) {
@@ -153,7 +155,7 @@ public class MediaNotificationsDisplayerApi33 implements MediaNotificationsDispl
 
         NotificationCompat.Builder builder = notificationBuilder.buildMusicNotification(context)
                 .setColorized(coloredNotification)
-                .setSmallIcon(R.drawable.ic_music_box)
+                .setSmallIcon(R.drawable.ic_notification_icon)
                 .setContentIntent(pIntent)
                 .setShowWhen(false)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)

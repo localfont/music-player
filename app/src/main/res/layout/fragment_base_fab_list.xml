@@ -23,7 +23,7 @@
             android:clipToPadding="false"
             tools:listitem="@layout/item_storage_music" />
 
-        <com.google.android.material.floatingactionbutton.FloatingActionButton
+        <com.github.anrimian.musicplayer.ui.common.fab.AppFloatingActionButton
             android:id="@+id/fab"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

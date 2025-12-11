@@ -37,6 +37,7 @@
         android:allowBackup="true"
         android:fullBackupContent="@xml/backup_rules"
         android:dataExtractionRules="@xml/data_extraction_rules"
+        android:enableOnBackInvokedCallback="true"
         android:requestLegacyExternalStorage="true"
         tools:ignore="UnusedAttribute"
         tools:replace="android:allowBackup">
@@ -66,8 +67,10 @@
         </activity>
 
         <activity android:name=".ui.main.external_player.ExternalPlayerActivity"
-            android:launchMode="singleInstance"
+            android:label="@string/title_external_player"
             android:theme="@style/DialogActivityTheme"
+            android:launchMode="singleInstance"
+            android:taskAffinity=".external_player"
             android:excludeFromRecents="true"
             android:exported="true">
             <intent-filter>

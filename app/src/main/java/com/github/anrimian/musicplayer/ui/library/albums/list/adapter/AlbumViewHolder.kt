@@ -43,7 +43,7 @@ class AlbumViewHolder(
     }
 
     override fun release() {
-        Components.getAppComponent().imageLoader().clearImage(binding.ivMusicIcon)
+        Components.getAppComponent().imageLoader().clearImage(binding.ivCover)
     }
 
     fun bind(album: Album) {
@@ -112,7 +112,7 @@ class AlbumViewHolder(
 
     private fun showCover() {
         Components.getAppComponent().imageLoader().displayImage(
-            binding.ivMusicIcon,
+            binding.ivCover,
             album,
             R.drawable.ic_album_placeholder
         )

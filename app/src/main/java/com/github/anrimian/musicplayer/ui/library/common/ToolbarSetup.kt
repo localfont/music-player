@@ -1,6 +1,7 @@
 package com.github.anrimian.musicplayer.ui.library.common
 
 import android.view.Gravity
+import android.view.View
 import androidx.fragment.app.Fragment
 import com.github.anrimian.musicplayer.R
 import com.github.anrimian.musicplayer.di.Components
@@ -10,17 +11,17 @@ import com.github.anrimian.musicplayer.ui.common.toolbar.AdvancedToolbar
 import com.github.anrimian.musicplayer.ui.library.albums.list.AlbumsListFragment
 import com.github.anrimian.musicplayer.ui.library.artists.list.ArtistsListFragment
 import com.github.anrimian.musicplayer.ui.library.compositions.LibraryCompositionsFragment
-import com.github.anrimian.musicplayer.ui.library.folders.root.newLibraryFoldersRootFragment
+import com.github.anrimian.musicplayer.ui.library.folders.root.LibraryFoldersRootFragment
 import com.github.anrimian.musicplayer.ui.library.genres.list.GenresListFragment
 import com.github.anrimian.musicplayer.ui.utils.fragments.navigation.FragmentNavigation
 
-fun AdvancedToolbar.setupLibraryTitle(fragment: Fragment) {
+fun AdvancedToolbar.SetupConfig.setupLibraryTitle(fragment: Fragment) {
     setTitle(R.string.library)
-    setTitleClickListener { view ->
+    titleClickListener = View.OnClickListener { view ->
         val fm = try {
             fragment.parentFragmentManager
         } catch (ignored: Exception) {
-            return@setTitleClickListener
+            return@OnClickListener
         }
         val navigation = FragmentNavigation.from(fm)
         PopupMenuWindow.showPopup(view, R.menu.library_categories_menu, Gravity.BOTTOM) { item ->
@@ -31,7 +32,7 @@ fun AdvancedToolbar.setupLibraryTitle(fragment: Fragment) {
                     navigation.newRootFragment(LibraryCompositionsFragment())
                 }
                 R.id.menu_files -> {
-                    navigation.newRootFragment(newLibraryFoldersRootFragment())
+                    navigation.newRootFragment(LibraryFoldersRootFragment.newInstance())
                     uiStateRepository.selectedLibraryScreen = Screens.LIBRARY_FOLDERS
                 }
                 R.id.menu_artists -> {

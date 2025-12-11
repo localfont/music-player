@@ -9,7 +9,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.MenuRes
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.github.anrimian.filesync.models.state.file.FileSyncState
+import com.github.anrimian.fsync.models.state.file.FileSyncState
 import com.github.anrimian.musicplayer.Constants
 import com.github.anrimian.musicplayer.Constants.Tags
 import com.github.anrimian.musicplayer.R
@@ -17,10 +17,13 @@ import com.github.anrimian.musicplayer.data.models.folders.UriFileReference
 import com.github.anrimian.musicplayer.databinding.FragmentBaseFabListBinding
 import com.github.anrimian.musicplayer.di.Components
 import com.github.anrimian.musicplayer.domain.models.composition.Composition
+import com.github.anrimian.musicplayer.domain.models.composition.CurrentComposition
 import com.github.anrimian.musicplayer.domain.models.composition.DeletedComposition
 import com.github.anrimian.musicplayer.domain.models.playlist.PlayList
 import com.github.anrimian.musicplayer.domain.models.playlist.PlayListItem
 import com.github.anrimian.musicplayer.domain.models.utils.ListPosition
+import com.github.anrimian.musicplayer.ui.common.applyFabBottomInsets
+import com.github.anrimian.musicplayer.ui.common.applyLibraryProgressViewOffset
 import com.github.anrimian.musicplayer.ui.common.dialogs.composition.showCompositionPopupMenu
 import com.github.anrimian.musicplayer.ui.common.dialogs.shareComposition
 import com.github.anrimian.musicplayer.ui.common.dialogs.showConfirmDeleteDialog
@@ -42,12 +45,13 @@ import com.github.anrimian.musicplayer.ui.playlist_screens.choose.ChoosePlayList
 import com.github.anrimian.musicplayer.ui.playlist_screens.playlist.adapter.PlayListItemAdapter
 import com.github.anrimian.musicplayer.ui.playlist_screens.rename.newRenamePlaylistDialog
 import com.github.anrimian.musicplayer.ui.sleep_timer.SleepTimerDialogFragment
-import com.github.anrimian.musicplayer.ui.utils.AndroidUtils
-import com.github.anrimian.musicplayer.ui.utils.fragments.BackButtonListener
+import com.github.anrimian.musicplayer.ui.utils.applyBottomInsets
+import com.github.anrimian.musicplayer.ui.utils.attrColor
 import com.github.anrimian.musicplayer.ui.utils.fragments.DialogFragmentRunner
 import com.github.anrimian.musicplayer.ui.utils.fragments.navigation.FragmentNavigation
 import com.github.anrimian.musicplayer.ui.utils.fragments.navigation.FragmentNavigationListener
 import com.github.anrimian.musicplayer.ui.utils.fragments.safeShow
+import com.github.anrimian.musicplayer.ui.utils.isTabletLand
 import com.github.anrimian.musicplayer.ui.utils.slidr.SlidrPanel
 import com.github.anrimian.musicplayer.ui.utils.views.recycler_view.RecyclerViewUtils
 import com.github.anrimian.musicplayer.ui.utils.views.recycler_view.touch_helper.drag_and_swipe.DragAndSwipeTouchHelperCallback
@@ -55,8 +59,7 @@ import com.google.android.material.snackbar.Snackbar
 import moxy.ktx.moxyPresenter
 
 
-class PlayListFragment : BaseLibraryFragment(), PlayListView, BackButtonListener,
-    FragmentNavigationListener {
+class PlayListFragment : BaseLibraryFragment(), PlayListView, FragmentNavigationListener {
 
     companion object {
         fun newInstance(playListId: Long) = PlayListFragment().apply {
@@ -105,9 +108,15 @@ class PlayListFragment : BaseLibraryFragment(), PlayListView, BackButtonListener
         super.onViewCreated(view, savedInstanceState)
         toolbar = requireActivity().findViewById(R.id.toolbar)
 
+        binding.fab.applyFabBottomInsets()
+        binding.progressStateView.applyLibraryProgressViewOffset(requireActivity())
+        if (isTabletLand()) {
+            binding.recyclerView.applyBottomInsets()
+        }
+
         touchHelperCallback = FormatUtils.withSwipeToDelete(
             binding.recyclerView,
-            AndroidUtils.getColorFromAttr(requireContext(), R.attr.listItemBottomBackground),
+            attrColor(R.attr.listItemBottomBackground),
             presenter::onItemSwipedToDelete,
             ItemTouchHelper.START,
             R.drawable.ic_playlist_remove,
@@ -127,7 +136,7 @@ class PlayListFragment : BaseLibraryFragment(), PlayListView, BackButtonListener
             binding.recyclerView,
             presenter.isCoversEnabled(),
             this::onItemMenuClicked,
-            presenter::onItemIconClicked
+            presenter::onItemClicked
         )
         binding.recyclerView.adapter = adapter
 
@@ -137,7 +146,7 @@ class PlayListFragment : BaseLibraryFragment(), PlayListView, BackButtonListener
         SlidrPanel.simpleSwipeBack(
             binding.listContainer,
             this,
-            toolbar::onStackFragmentSlided
+            toolbar::setNavigationButtonProgress
         )
 
         val fm = childFragmentManager
@@ -154,9 +163,9 @@ class PlayListFragment : BaseLibraryFragment(), PlayListView, BackButtonListener
     }
 
     override fun onFragmentResumed() {
-        requireActivity().findViewById<AdvancedToolbar>(R.id.toolbar).setup { config ->
-            config.setupSearch(presenter::onSearchTextChanged, presenter.getSearchText())
-            config.setupOptionsMenu(R.menu.play_list_toolbar_menu, this::onOptionsItemClicked)
+        requireActivity().findViewById<AdvancedToolbar>(R.id.toolbar).setup {
+            setupSearch(presenter::onSearchTextChanged, text = presenter.getSearchText())
+            setupOptionsMenu(R.menu.play_list_toolbar_menu, ::onOptionsItemClicked)
         }
         presenter.onFragmentResumed()
     }
@@ -166,15 +175,9 @@ class PlayListFragment : BaseLibraryFragment(), PlayListView, BackButtonListener
         presenter.onStop(ViewUtils.getListPosition(layoutManager))
     }
 
-    override fun onBackPressed(): Boolean {
-        if (toolbar.isInSearchMode()) {
-            toolbar.setSearchModeEnabled(false)
-            return true
-        }
-        return false
-    }
-
     override fun getCoordinatorLayout() = binding.listContainer
+
+    override fun getFloatingActionButton() = binding.fab
 
     override fun showEmptyList() {
         binding.fab.visibility = View.GONE
@@ -230,33 +233,38 @@ class PlayListFragment : BaseLibraryFragment(), PlayListView, BackButtonListener
 
     override fun showDeleteCompositionError(errorCommand: ErrorCommand) {
         deletingErrorHandler.handleError(errorCommand) {
-            MessagesUtils.makeSnackbar(
-                binding.listContainer,
+            binding.listContainer.showSnackbar(
                 getString(R.string.delete_composition_error_template, errorCommand.message),
-                Snackbar.LENGTH_SHORT
-            ).show()
+                anchorView = binding.fab
+            )
         }
     }
 
     override fun showDeletedCompositionMessage(compositionsToDelete: List<DeletedComposition>) {
         val text = MessagesUtils.getDeleteCompleteMessage(requireActivity(), compositionsToDelete)
-        MessagesUtils.makeSnackbar(binding.listContainer, text, Snackbar.LENGTH_SHORT).show()
+        binding.listContainer.showSnackbar(text, anchorView = binding.fab)
     }
 
     override fun showDeleteItemError(errorCommand: ErrorCommand) {
-        MessagesUtils.makeSnackbar(
-            binding.listContainer,
+        binding.listContainer.showSnackbar(
             getString(R.string.add_item_to_playlist_error_template, errorCommand.message),
-            Snackbar.LENGTH_SHORT
-        ).show()
+            anchorView = binding.fab
+        )
     }
 
     override fun showDeleteItemCompleted(playList: PlayList, items: List<PlayListItem>) {
-        val text =
-            MessagesUtils.getDeletePlayListItemCompleteMessage(requireActivity(), playList, items)
-        MessagesUtils.makeSnackbar(binding.listContainer, text, Snackbar.LENGTH_LONG)
-            .setAction(R.string.cancel, presenter::onRestoreRemovedItemClicked)
-            .show()
+        val text = MessagesUtils.getDeletePlayListItemCompleteMessage(
+            requireActivity(),
+            playList,
+            items
+        )
+        binding.listContainer.showSnackbar(
+            text,
+            Snackbar.LENGTH_LONG,
+            anchorView = binding.fab,
+            actionText = getString(R.string.cancel),
+            action = presenter::onRestoreRemovedItemClicked
+        )
     }
 
     override fun showConfirmDeletePlayListDialog(playList: PlayList) {
@@ -266,19 +274,17 @@ class PlayListFragment : BaseLibraryFragment(), PlayListView, BackButtonListener
     }
 
     override fun showPlayListDeleteSuccess(playList: PlayList) {
-        MessagesUtils.makeSnackbar(
-            binding.listContainer,
+        binding.listContainer.showSnackbar(
             getString(R.string.play_list_deleted, playList.name),
-            Snackbar.LENGTH_SHORT
-        ).show()
+            anchorView = binding.fab
+        )
     }
 
     override fun showDeletePlayListError(errorCommand: ErrorCommand) {
-        MessagesUtils.makeSnackbar(
-            binding.listContainer,
+        binding.listContainer.showSnackbar(
             getString(R.string.play_list_delete_error, errorCommand.message),
-            Snackbar.LENGTH_SHORT
-        ).show()
+            anchorView = binding.fab
+        )
     }
 
     override fun notifyItemMoved(from: Int, to: Int) {
@@ -297,6 +303,10 @@ class PlayListFragment : BaseLibraryFragment(), PlayListView, BackButtonListener
         FormatUtils.formatPlayAllButton(binding.fab, isRandomModeEnabled)
     }
 
+    override fun showCurrentComposition(currentComposition: CurrentComposition) {
+        adapter.showCurrentComposition(currentComposition)
+    }
+
     override fun setDragEnabled(enabled: Boolean) {
         touchHelperCallback.setDragEnabled(enabled)
     }
@@ -307,13 +317,13 @@ class PlayListFragment : BaseLibraryFragment(), PlayListView, BackButtonListener
 
     override fun showPlaylistExportSuccess(playlist: PlayList) {
         binding.listContainer.showSnackbar(
-            getExportedPlaylistsMessage(requireContext(), listOf(playlist))
+            getExportedPlaylistsMessage(requireContext(), listOf(playlist)),
+            anchorView = binding.fab
         )
     }
 
     private fun onItemMenuClicked(view: View, position: Int, playListItem: PlayListItem) {
-        val composition = playListItem.composition
-        showCompositionPopupMenu(view, R.menu.play_list_item_menu, composition) { item ->
+        showCompositionPopupMenu(view, R.menu.play_list_item_menu, playListItem) { item ->
             onCompositionActionSelected(playListItem, item.itemId, position)
         }
     }
@@ -323,18 +333,17 @@ class PlayListFragment : BaseLibraryFragment(), PlayListView, BackButtonListener
         @MenuRes menuItemId: Int,
         position: Int
     ) {
-        val composition = item.composition
         when (menuItemId) {
             R.id.menu_play -> presenter.onPlayActionSelected(position)
-            R.id.menu_play_next -> presenter.onPlayNextCompositionClicked(composition)
-            R.id.menu_add_to_queue -> presenter.onAddToQueueCompositionClicked(composition)
-            R.id.menu_add_to_playlist -> presenter.onAddToPlayListButtonClicked(composition)
+            R.id.menu_play_next -> presenter.onPlayNextCompositionClicked(item)
+            R.id.menu_add_to_queue -> presenter.onAddToQueueCompositionClicked(item)
+            R.id.menu_add_to_playlist -> presenter.onAddToPlayListButtonClicked(item)
             R.id.menu_edit ->
-                startActivity(CompositionEditorActivity.newIntent(requireContext(), composition.id))
-            R.id.menu_show_in_folders -> MainActivity.showInFolders(requireActivity(), composition)
-            R.id.menu_share -> shareComposition(this, composition)
+                startActivity(CompositionEditorActivity.newIntent(requireContext(), item.id))
+            R.id.menu_show_in_folders -> MainActivity.showInFolders(requireActivity(), item)
+            R.id.menu_share -> shareComposition(this, item)
             R.id.menu_delete_from_play_list -> presenter.onDeleteFromPlayListButtonClicked(item)
-            R.id.menu_delete -> presenter.onDeleteCompositionButtonClicked(composition)
+            R.id.menu_delete -> presenter.onDeleteCompositionButtonClicked(item)
         }
     }
 
@@ -352,11 +361,11 @@ class PlayListFragment : BaseLibraryFragment(), PlayListView, BackButtonListener
     }
 
     private fun showEditorRequestDeniedMessage() {
-        MessagesUtils.makeSnackbar(
-            binding.listContainer,
+        binding.listContainer.showSnackbar(
             R.string.android_r_edit_file_permission_denied,
-            Snackbar.LENGTH_LONG
-        ).show()
+            duration = Snackbar.LENGTH_LONG,
+            anchorView = binding.fab
+        )
     }
 
 }

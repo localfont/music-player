@@ -11,7 +11,7 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.annotation.ColorInt
 import androidx.core.content.ContextCompat
-import com.github.anrimian.filesync.models.state.file.FileSyncState
+import com.github.anrimian.fsync.models.state.file.FileSyncState
 import com.github.anrimian.musicplayer.R
 import com.github.anrimian.musicplayer.di.Components
 import com.github.anrimian.musicplayer.domain.Payloads
@@ -23,11 +23,11 @@ import com.github.anrimian.musicplayer.ui.common.format.FormatUtils
 import com.github.anrimian.musicplayer.ui.common.format.description.DescriptionSpannableStringBuilder
 import com.github.anrimian.musicplayer.ui.common.format.getHighlightColor
 import com.github.anrimian.musicplayer.ui.common.format.showFileSyncState
+import com.github.anrimian.musicplayer.ui.common.progress.ProgressView
 import com.github.anrimian.musicplayer.ui.utils.AndroidUtils
 import com.github.anrimian.musicplayer.ui.utils.ViewUtils
 import com.github.anrimian.musicplayer.ui.utils.colorFromAttr
 import com.github.anrimian.musicplayer.ui.utils.getHighlightAnimator
-import com.github.anrimian.musicplayer.ui.utils.views.progress_bar.ProgressView
 
 open class CompositionItemWrapper<T: Composition>(
     itemView: View,
@@ -39,7 +39,7 @@ open class CompositionItemWrapper<T: Composition>(
     private val clickableItem: FrameLayout = itemView.findViewById(R.id.clickable_item)
     private val divider: View = itemView.findViewById(R.id.divider)
     private val ivPlay: ImageView = itemView.findViewById(R.id.iv_play)
-    private val ivMusicIcon: ImageView = itemView.findViewById(R.id.ivMusicIcon)
+    private val ivMusicIcon: ImageView = itemView.findViewById(R.id.ivCover)
     private val btnActionsMenu: ImageView = itemView.findViewById(R.id.btnActionsMenu)
     private val iconClickableArea: View = itemView.findViewById(R.id.icon_clickable_area)
     private val pvFileState: ProgressView = itemView.findViewById(R.id.pvFileState)
@@ -69,7 +69,7 @@ open class CompositionItemWrapper<T: Composition>(
         showCorrupted()
         showCompositionImage(showCovers)
         showAsPlaying(isPlaying = false, animate = false)
-        updateFileSyncState()
+        updateFileSyncState(false)
     }
 
     fun update(composition: T, payloads: List<*>) {
@@ -95,7 +95,7 @@ open class CompositionItemWrapper<T: Composition>(
                 showAdditionalInfo()
             }
             if (payload == Payloads.FILE_EXISTS) {
-                updateFileSyncState()
+                updateFileSyncState(true)
             }
             onUpdate(payload)
         }
@@ -169,7 +169,7 @@ open class CompositionItemWrapper<T: Composition>(
 
     fun showFileSyncState(fileSyncState: FileSyncState?) {
         this.fileSyncState = fileSyncState
-        updateFileSyncState()
+        updateFileSyncState(true)
     }
 
     protected fun showAdditionalInfo() {
@@ -226,10 +226,6 @@ open class CompositionItemWrapper<T: Composition>(
         val alpha = if (composition.corruptionType == null) 1f else 0.5f
         tvMusicName.alpha = alpha
         tvAdditionalInfo.alpha = alpha
-        ivMusicIcon.alpha = alpha
-        ivPlay.alpha = alpha
-        btnActionsMenu.alpha = alpha
-        pvFileState.alpha = alpha
     }
 
     private fun showAsDragging(dragging: Boolean) {
@@ -250,12 +246,11 @@ open class CompositionItemWrapper<T: Composition>(
         }
     }
 
-    private fun updateFileSyncState() {
-        //TODO play queue small-land placement
-        showFileSyncState(
+    private fun updateFileSyncState(animate: Boolean) {
+        pvFileState.showFileSyncState(
             fileSyncState,
             CompositionHelper.isCompositionFileRemote(composition),
-            pvFileState
+            animate
         )
     }
 
